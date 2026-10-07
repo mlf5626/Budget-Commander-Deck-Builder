@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<title>{{ commander.name }}</title>
+</head>
+
+<body>
+
+	<h1>{{ commander.name }}</h1>
+
+	<img
+		src="{{ commander.image_uris.normal }}"
+		alt="{{ commander.name }}"
+		width="300"
+	>
+
+	<h2>Commander Information</h2>
+
+	<p>
+		<strong>Mana Cost:</strong>
+		{{ commander.mana_cost }}
+	</p>
+
+	<p>
+		<strong>Color Identity:</strong>
+		{{ commander.color_identity | join(", ") }}
+	</p>
+
+	<p>
+		<strong>Type:</strong>
+		{{ commander.type_line }}
+	</p>
+
+	<p>
+		<strong>Card Text:</strong>
+		{{ commander.oracle_text }}
+	</p>
+
+	<p>
+		<strong>Commander Legal:</strong>
+		{{ commander.legalities.commander }}
+	</p>
+
+	<a href="/">Search for another Commander</a>
+
+</body>
+
+</html>
