@@ -1,8 +1,8 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session, redirect, url_for
 import requests
 
 app = Flask(__name__)
-
+app.secret_key = "budget-commander-deck-builder"
 
 @app.route("/")
 def home():
@@ -46,6 +46,10 @@ def search():
 def build():
     commander_name = request.form.get("commander_name")
     budget = request.form.get("budget")
+    
+    session["commander_name"] = commander_name
+    session["budget"] = budget
+    session["deck"] = []
 
     # Look up the selected Commander again
     commander_url = "https://api.scryfall.com/cards/named"
@@ -96,10 +100,49 @@ def build():
     cards = card_data["data"][:20]
 
     return render_template(
-        "builder.html",
-        commander=commander,
+    "builder.html",
+    commander=commander,
+    budget=budget,
+    cards=cards,
+    deck=session["deck"],
+    deck_size=1,
+    deck_cost=0.00
+    )
+
+@app.route("/add-card", methods=["POST"])
+def add_card():
+    card_name = request.form.get("card_name")
+    card_price = request.form.get("card_price")
+
+    deck = session.get("deck", [])
+
+    card = {
+        "name": card_name,
+        "price": float(card_price)
+    }
+
+    deck.append(card)
+
+    session["deck"] = deck
+
+    return redirect(url_for("deck"))
+
+@app.route("/deck")
+def deck():
+    deck = session.get("deck", [])
+    commander_name = session.get("commander_name")
+    budget = float(session.get("budget", 0))
+
+    deck_cost = sum(card["price"] for card in deck)
+    deck_size = len(deck) + 1
+
+    return render_template(
+        "deck.html",
+        commander_name=commander_name,
         budget=budget,
-        cards=cards
+        deck=deck,
+        deck_cost=deck_cost,
+        deck_size=deck_size
     )
 if __name__ == "__main__":
     app.run(debug=True)

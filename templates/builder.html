@@ -69,9 +69,35 @@
 
 			</p>
 
-			<button type="button">
-				Add to Deck
-			</button>
+			{% if card.prices.usd %}
+
+<form action="/add-card" method="POST">
+
+    <input
+        type="hidden"
+        name="card_name"
+        value="{{ card.name }}"
+    >
+
+    <input
+        type="hidden"
+        name="card_price"
+        value="{{ card.prices.usd }}"
+    >
+
+    <button type="submit">
+        Add to Deck
+    </button>
+
+</form>
+
+{% else %}
+
+<button type="button" disabled>
+    Price Unavailable
+</button>
+
+{% endif %}
 
 		</div>
 

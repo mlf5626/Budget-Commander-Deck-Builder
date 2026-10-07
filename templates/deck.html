@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<title>Your Commander Deck</title>
+</head>
+
+<body>
+
+	<h1>Your Commander Deck</h1>
+
+	<h2>{{ commander_name }}</h2>
+
+	<p>
+		<strong>Deck Size:</strong>
+		{{ deck_size }} / 100
+	</p>
+
+	<p>
+		<strong>Estimated Cost:</strong>
+		${{ "%.2f"|format(deck_cost) }}
+		/
+		${{ "%.2f"|format(budget) }}
+	</p>
+
+	<p>
+		<strong>Remaining Budget:</strong>
+		${{ "%.2f"|format(budget - deck_cost) }}
+	</p>
+
+	<hr>
+
+	<h2>Cards in Your Deck</h2>
+
+	{% if deck %}
+
+		{% for card in deck %}
+
+			<p>
+				{{ card.name }}
+				-
+				${{ "%.2f"|format(card.price) }}
+			</p>
+
+		{% endfor %}
+
+	{% else %}
+
+		<p>No cards have been added yet.</p>
+
+	{% endif %}
+
+</body>
+
+</html>
