@@ -116,12 +116,32 @@ def add_card():
 
     deck = session.get("deck", [])
 
+    # Prevent duplicate cards
+    for existing_card in deck:
+        if existing_card["name"] == card_name:
+            return redirect(url_for("deck"))
+
     card = {
         "name": card_name,
         "price": float(card_price)
     }
 
     deck.append(card)
+
+    session["deck"] = deck
+
+    return redirect(url_for("deck"))
+
+@app.route("/remove-card", methods=["POST"])
+def remove_card():
+    card_name = request.form.get("card_name")
+
+    deck = session.get("deck", [])
+
+    deck = [
+        card for card in deck
+        if card["name"] != card_name
+    ]
 
     session["deck"] = deck
 
@@ -140,6 +160,67 @@ def deck():
         "deck.html",
         commander_name=commander_name,
         budget=budget,
+        deck=deck,
+        deck_cost=deck_cost,
+        deck_size=deck_size
+    )
+
+@app.route("/continue-building")
+def continue_building():
+    commander_name = session.get("commander_name")
+    budget = float(session.get("budget", 0))
+    deck = session.get("deck", [])
+
+    if not commander_name:
+        return redirect(url_for("home"))
+
+    headers = {
+        "User-Agent": "BudgetCommanderDeckBuilder/1.0",
+        "Accept": "application/json"
+    }
+
+    # Retrieve Commander information
+    commander_response = requests.get(
+        "https://api.scryfall.com/cards/named",
+        params={"exact": commander_name},
+        headers=headers,
+        timeout=10
+    )
+
+    if commander_response.status_code != 200:
+        return "Unable to retrieve Commander."
+
+    commander = commander_response.json()
+
+    color_identity = "".join(commander["color_identity"])
+
+    search_query = (
+        f"legal:commander "
+        f"id<={color_identity} "
+        f"-t:land "
+        f"game:paper"
+    )
+
+    card_response = requests.get(
+        "https://api.scryfall.com/cards/search",
+        params={"q": search_query},
+        headers=headers,
+        timeout=10
+    )
+
+    if card_response.status_code != 200:
+        return "Unable to retrieve legal cards."
+
+    cards = card_response.json()["data"][:20]
+
+    deck_cost = sum(card["price"] for card in deck)
+    deck_size = len(deck) + 1
+
+    return render_template(
+        "builder.html",
+        commander=commander,
+        budget=budget,
+        cards=cards,
         deck=deck,
         deck_cost=deck_cost,
         deck_size=deck_size

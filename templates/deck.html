@@ -39,13 +39,33 @@
 
 		{% for card in deck %}
 
-			<p>
-				{{ card.name }}
-				-
-				${{ "%.2f"|format(card.price) }}
-			</p>
+    <div>
 
-		{% endfor %}
+        <p>
+            {{ card.name }}
+            -
+            ${{ "%.2f"|format(card.price) }}
+        </p>
+
+        <form action="/remove-card" method="POST">
+
+            <input
+                type="hidden"
+                name="card_name"
+                value="{{ card.name }}"
+            >
+
+            <button type="submit">
+                Remove
+            </button>
+
+        </form>
+
+    </div>
+
+    <br>
+
+{% endfor %}
 
 	{% else %}
 
@@ -53,6 +73,18 @@
 
 	{% endif %}
 
+<hr>
+
+<a href="/continue-building">
+    Continue Building
+</a>
+
+<br>
+<br>
+
+<a href="/">
+    Start Over
+</a>    
 </body>
 
 </html>

@@ -25,9 +25,16 @@
 	</p>
 
 	<p>
-		<strong>Deck Size:</strong>
-		1 / 100
-	</p>
+    <strong>Deck Size:</strong>
+    {{ deck_size }} / 100
+</p>
+
+<p>
+    <strong>Estimated Cost:</strong>
+    ${{ "%.2f"|format(deck_cost) }}
+    /
+    ${{ "%.2f"|format(budget|float) }}
+</p>
 
 	<hr>
 
