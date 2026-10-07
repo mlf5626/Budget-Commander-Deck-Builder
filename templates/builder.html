@@ -63,8 +63,51 @@
 </form>
 
 <br>
+
+<h3>Browse by Category</h3>
+
+<form action="/category" method="POST">
+
+    <label for="category">
+        Category:
+    </label>
+
+   <select
+    id="category"
+    name="category"
+>
+
+    <option value="ramp">
+        Ramp
+    </option>
+
+    <option value="draw">
+        Card Draw
+    </option>
+
+    <option value="removal">
+        Removal
+    </option>
+
+    <option value="board_wipe">
+        Board Wipes
+    </option>
+
+    <option value="protection">
+        Protection
+    </option>
+
+</select>
+
+    <button type="submit">
+        Browse
+    </button>
+
+</form>
+
+<br>
 	<p>
-		The following cards are illegal with your selected Commander.
+		The following cards are legal with your selected Commander.
 	</p>
 
 	{% for card in cards %}
