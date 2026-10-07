@@ -295,6 +295,12 @@ def search_cards():
 @app.route("/category", methods=["POST"])
 def category():
     selected_category = request.form.get("category")
+    max_price = request.form.get("max_price", "5.00")
+
+    try:
+        max_price_value = float(max_price)
+    except ValueError:
+        max_price_value = 5.00
 
     commander_name = session.get("commander_name")
     budget = float(session.get("budget", 0))
@@ -352,13 +358,13 @@ def category():
     category_query = category_queries.get(selected_category, "")
 
     search_query = (
-        f"legal:commander "
-        f"id<={color_identity} "
-        f"-t:land "
-        f"game:paper "
-        f"{category_query}"
-    )
-
+    f"legal:commander "
+    f"id<={color_identity} "
+    f"-t:land "
+    f"game:paper "
+    f"usd<={max_price_value} "
+    f"{category_query}"
+)
     card_response = requests.get(
         "https://api.scryfall.com/cards/search",
         params={
@@ -385,7 +391,8 @@ def category():
         deck=deck,
         deck_cost=deck_cost,
         deck_size=deck_size,
-        selected_category=selected_category
+        selected_category=selected_category,
+        max_price=max_price
     )
 
 if __name__ == "__main__":
