@@ -35,6 +35,15 @@ def search():
     if response.status_code == 200:
         commander = response.json()
 
+        commander_price = commander["prices"].get("usd")
+
+        if commander_price:
+            commander_price = float(commander_price)
+        else:
+            commander_price = 0.00
+
+        session["commander_price"] = commander_price
+
         return render_template(
             "commander.html",
             commander=commander
@@ -115,19 +124,44 @@ def add_card():
     card_price = request.form.get("card_price")
 
     deck = session.get("deck", [])
+    budget = float(session.get("budget", 0))
+
+    try:
+        price = float(card_price)
+    except (TypeError, ValueError):
+        return redirect(url_for("deck"))
 
     # Prevent duplicate cards
     for existing_card in deck:
         if existing_card["name"] == card_name:
             return redirect(url_for("deck"))
 
+    # Commander counts as card 1
+    current_deck_size = len(deck) + 1
+
+    # Prevent deck from exceeding 100 cards
+    if current_deck_size >= 100:
+        session["message"] = "Your deck already contains 100 cards."
+        return redirect(url_for("deck"))
+
+    # Calculate current deck cost
+    current_deck_cost = sum(
+        card["price"] for card in deck
+    )
+
+    # Prevent the new card from exceeding the budget
+    if current_deck_cost + price > budget:
+        session["message"] = (
+            f"{card_name} would put your deck over budget."
+        )
+        return redirect(url_for("deck"))
+
     card = {
         "name": card_name,
-        "price": float(card_price)
+        "price": price
     }
 
     deck.append(card)
-
     session["deck"] = deck
 
     return redirect(url_for("deck"))
@@ -150,6 +184,7 @@ def remove_card():
 @app.route("/deck")
 def deck():
     deck = session.get("deck", [])
+    message = session.pop("message", None)
     commander_name = session.get("commander_name")
     budget = float(session.get("budget", 0))
 
@@ -162,7 +197,8 @@ def deck():
         budget=budget,
         deck=deck,
         deck_cost=deck_cost,
-        deck_size=deck_size
+        deck_size=deck_size,
+        message=message
     )
 
 @app.route("/continue-building")
