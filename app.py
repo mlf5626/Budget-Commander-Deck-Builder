@@ -225,5 +225,73 @@ def continue_building():
         deck_cost=deck_cost,
         deck_size=deck_size
     )
+
+@app.route("/search-cards", methods=["POST"])
+def search_cards():
+    card_search = request.form.get("card_search", "").strip()
+
+    commander_name = session.get("commander_name")
+    budget = float(session.get("budget", 0))
+    deck = session.get("deck", [])
+
+    if not commander_name:
+        return redirect(url_for("home"))
+
+    headers = {
+        "User-Agent": "BudgetCommanderDeckBuilder/1.0",
+        "Accept": "application/json"
+    }
+
+    # Retrieve the selected Commander
+    commander_response = requests.get(
+        "https://api.scryfall.com/cards/named",
+        params={"exact": commander_name},
+        headers=headers,
+        timeout=10
+    )
+
+    if commander_response.status_code != 200:
+        return "Unable to retrieve Commander."
+
+    commander = commander_response.json()
+
+    color_identity = "".join(commander["color_identity"])
+
+    # Search only for cards legal with this Commander
+    search_query = (
+        f"legal:commander "
+        f"id<={color_identity} "
+        f"-t:land "
+        f"game:paper "
+        f"{card_search}"
+    )
+
+    card_response = requests.get(
+        "https://api.scryfall.com/cards/search",
+        params={"q": search_query},
+        headers=headers,
+        timeout=10
+    )
+
+    if card_response.status_code != 200:
+        cards = []
+    else:
+        cards = card_response.json()["data"][:20]
+
+    deck_cost = sum(card["price"] for card in deck)
+    deck_size = len(deck) + 1
+
+    return render_template(
+        "builder.html",
+        commander=commander,
+        budget=budget,
+        cards=cards,
+        deck=deck,
+        deck_cost=deck_cost,
+        deck_size=deck_size,
+        card_search=card_search
+    )
+
+
 if __name__ == "__main__":
     app.run(debug=True)

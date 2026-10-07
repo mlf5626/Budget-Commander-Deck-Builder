@@ -39,9 +39,32 @@
 	<hr>
 
 	<h2>Available Cards</h2>
+<h3>Find a Card</h3>
 
+<form action="/search-cards" method="POST">
+
+    <label for="card_search">
+        Card Name:
+    </label>
+
+    <input
+        type="text"
+        id="card_search"
+        name="card_search"
+        placeholder="Example: Sol Ring"
+        value="{{ card_search | default('') }}"
+        required
+    >
+
+    <button type="submit">
+        Search Cards
+    </button>
+
+</form>
+
+<br>
 	<p>
-		The following cards are legal with your selected Commander.
+		The following cards are illegal with your selected Commander.
 	</p>
 
 	{% for card in cards %}
