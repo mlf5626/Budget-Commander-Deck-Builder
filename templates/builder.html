@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<title>Build Your Commander Deck</title>
+</head>
+
+<body>
+
+	<h1>Build Your Commander Deck</h1>
+
+	<h2>{{ commander.name }}</h2>
+
+	<p>
+		<strong>Color Identity:</strong>
+		{{ commander.color_identity | join(", ") }}
+	</p>
+
+	<p>
+		<strong>Deck Budget:</strong>
+		${{ budget }}
+	</p>
+
+	<p>
+		<strong>Deck Size:</strong>
+		1 / 100
+	</p>
+
+	<hr>
+
+	<h2>Available Cards</h2>
+
+	<p>
+		The following cards are legal with your selected Commander.
+	</p>
+
+	{% for card in cards %}
+
+		<div>
+
+			<h3>{{ card.name }}</h3>
+
+			{% if card.image_uris %}
+
+				<img
+					src="{{ card.image_uris.small }}"
+					alt="{{ card.name }}"
+					width="150"
+				>
+
+			{% endif %}
+
+			<p>
+				<strong>Type:</strong>
+				{{ card.type_line }}
+			</p>
+
+			<p>
+				<strong>Price:</strong>
+
+				{% if card.prices.usd %}
+					${{ card.prices.usd }}
+				{% else %}
+					Price unavailable
+				{% endif %}
+
+			</p>
+
+			<button type="button">
+				Add to Deck
+			</button>
+
+		</div>
+
+		<hr>
+
+	{% endfor %}
+
+	<a href="/">Start Over</a>
+
+</body>
+
+</html>

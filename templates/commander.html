@@ -44,7 +44,41 @@
 		<strong>Commander Legal:</strong>
 		{{ commander.legalities.commander }}
 	</p>
+<hr>
 
+<h2>Set Your Deck Budget</h2>
+
+<p>
+    Enter the maximum amount you want to spend on your Commander deck.
+</p>
+
+<form action="/build" method="POST">
+
+    <input
+        type="hidden"
+        name="commander_name"
+        value="{{ commander.name }}"
+    >
+
+    <label for="budget">Deck Budget: $</label>
+
+    <input
+        type="number"
+        id="budget"
+        name="budget"
+        min="1"
+        step="0.01"
+        placeholder="100.00"
+        required
+    >
+
+    <button type="submit">
+        Build My Deck
+    </button>
+
+</form>
+
+<br>
 	<a href="/">Search for another Commander</a>
 
 </body>
