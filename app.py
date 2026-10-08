@@ -3,6 +3,7 @@ import requests
 from functools import lru_cache
 import sqlite3
 from legality import validate_deck
+from recommendations import fetch_recommendations, CATEGORIES
 from database import (
     init_db, save_deck, list_saved_decks, load_saved_deck,
     update_saved_deck, delete_saved_deck,
@@ -633,6 +634,54 @@ def category():
         max_price=max_price
     )
 
+
+
+@app.route("/recommendations", methods=["GET"])
+def recommendations():
+    commander_name = session.get("commander_name")
+    if not commander_name:
+        return redirect(url_for("home"))
+    category = request.args.get("category", "synergy")
+    sort = request.args.get("sort", "popular")
+    deck_cards = session.get("deck", [])
+    basic_lands = session.get("basic_lands", {})
+    budget = float(session.get("budget", 0))
+    commander_price = float(session.get("commander_price", 0))
+    basic_land_cost = 0.0
+    for land_name, quantity in basic_lands.items():
+        price = get_basic_land_price(land_name)
+        if price is None:
+            session["message"] = "Unable to verify basic land prices."
+            return redirect(url_for("deck"))
+        basic_land_cost += price * quantity
+    deck_cost = commander_price + sum(float(c["price"]) for c in deck_cards) + basic_land_cost
+    deck_size = 1 + len(deck_cards) + sum(basic_lands.values())
+    try:
+        response = requests.get(
+            "https://api.scryfall.com/cards/named",
+            params={"exact": commander_name},
+            headers={"User-Agent": "BudgetCommanderDeckBuilder/1.0", "Accept": "application/json"},
+            timeout=10,
+        )
+        response.raise_for_status()
+        commander = response.json()
+    except (requests.RequestException, ValueError):
+        session["message"] = "Unable to retrieve Commander information."
+        return redirect(url_for("deck"))
+    if deck_size >= 100:
+        cards, description, error = [], "Your deck is full. Remove a card to see addable recommendations.", None
+    else:
+        cards, description, error = fetch_recommendations(
+            commander, deck_cards, budget - deck_cost, category, sort
+        )
+    return render_template(
+        "builder.html", commander=commander, budget=budget,
+        cards=cards, deck=deck_cards, deck_cost=deck_cost, deck_size=deck_size,
+        recommendation_mode=True, recommendation_categories=CATEGORIES,
+        recommendation_category=category if category in CATEGORIES else "synergy",
+        recommendation_sort=sort if sort in ("popular", "price") else "popular",
+        recommendation_description=description, recommendation_error=error,
+    )
 
 @app.route("/add-basic-land", methods=["POST"])
 def add_basic_land():

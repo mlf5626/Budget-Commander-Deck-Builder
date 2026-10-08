@@ -265,6 +265,32 @@
             <!-- Sidebar -->
             <aside class="col-lg-3">
 
+<!-- Budget-aware Recommendations -->
+<div class="filter-panel mb-4">
+    <h2 class="h5 section-heading">Recommended for Your Commander</h2>
+    <p class="muted-text small">Suggestions based on Scryfall card text, Commander colors, and remaining budget.</p>
+    <form action="{{ url_for('recommendations') }}" method="GET">
+        <label for="recommendation_category" class="form-label">Recommendation Type</label>
+        <select id="recommendation_category" name="category" class="form-select mb-3">
+            {% for key, label in (recommendation_categories or {
+                'synergy': 'Commander Synergy',
+                'ramp': 'Ramp',
+                'draw': 'Card Draw',
+                'removal': 'Removal',
+                'protection': 'Protection'
+            }).items() %}
+                <option value="{{ key }}" {% if recommendation_category == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <label for="recommendation_sort" class="form-label">Sort Suggestions</label>
+        <select id="recommendation_sort" name="sort" class="form-select mb-3">
+            <option value="popular" {% if recommendation_sort != 'price' %}selected{% endif %}>Commander Popularity</option>
+            <option value="price" {% if recommendation_sort == 'price' %}selected{% endif %}>Lowest Price First</option>
+        </select>
+        <button type="submit" class="btn btn-purple w-100">Find Recommendations</button>
+    </form>
+</div>
+
                 <div class="filter-panel mb-4">
                     <h2 class="h5 section-heading">
                         Find a Card
@@ -453,6 +479,16 @@
                     </span>
                 </div>
 
+                {% if recommendation_mode %}
+                    <div class="filter-panel mb-3">
+                        <strong>Personalized Recommendations</strong>
+                        <p class="muted-text small mb-0">{{ recommendation_description }}</p>
+                        <p class="muted-text small mb-0">Cards already in your deck, unpriced cards, and cards over your remaining budget are excluded from these results.</p>
+                    </div>
+                {% endif %}
+                {% if recommendation_error %}
+                    <div class="alert alert-warning" role="alert">{{ recommendation_error }}</div>
+                {% endif %}
                 <div class="row g-3">
 
                     {% for card in cards %}
