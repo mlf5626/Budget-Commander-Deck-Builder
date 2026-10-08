@@ -1,86 +1,295 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-	<title>{{ commander.name }}</title>
+    <title>{{ commander.name }} | Budget Commander Deck Builder</title>
+
+    <!-- Bootstrap 5 -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <style>
+        body {
+            background-color: #101827;
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background-color: #172238;
+            border-bottom: 1px solid #334155;
+        }
+
+        .navbar-brand {
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        .navbar-brand:hover {
+            color: #c4b5fd;
+        }
+
+        .page-heading {
+            padding: 50px 0 30px;
+        }
+
+        .highlight {
+            color: #a78bfa;
+        }
+
+        .info-panel {
+            background-color: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 16px;
+            padding: 30px;
+            height: 100%;
+        }
+
+        .commander-image {
+            width: 100%;
+            max-width: 360px;
+            border-radius: 16px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .info-label {
+            color: #c4b5fd;
+            font-weight: 600;
+        }
+
+        .muted-text {
+            color: #cbd5e1;
+        }
+
+        .card-description {
+            white-space: pre-line;
+            line-height: 1.7;
+        }
+
+        .budget-panel {
+            background-color: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 30px;
+        }
+
+        .btn-purple {
+            background-color: #7c3aed;
+            border-color: #7c3aed;
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-purple:hover {
+            background-color: #6d28d9;
+            border-color: #6d28d9;
+            color: white;
+        }
+
+        .back-link {
+            color: #c4b5fd;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            color: #ffffff;
+            text-decoration: underline;
+        }
+    </style>
 </head>
 
 <body>
 
-	<h1>{{ commander.name }}</h1>
+    <!-- Navigation -->
+    <nav class="navbar navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                Budget Commander Deck Builder
+            </a>
+        </div>
+    </nav>
 
-	<img
-		src="{{ commander.image_uris.normal }}"
-		alt="{{ commander.name }}"
-		width="300"
-	>
+    <main class="container pb-5">
 
-	<h2>Commander Information</h2>
+        <!-- Page Heading -->
+        <section class="page-heading text-center">
+            <h1 class="fw-bold">
+                Your <span class="highlight">Commander</span>
+            </h1>
 
-	<p>
-		<strong>Mana Cost:</strong>
-		{{ commander.mana_cost }}
-	</p>
+            <p class="muted-text">
+                Review your Commander and set your deck-building budget.
+            </p>
+        </section>
 
-	<p>
-		<strong>Color Identity:</strong>
-		{{ commander.color_identity | join(", ") }}
-	</p>
+        <!-- Commander Details -->
+        <section class="row g-4 align-items-stretch">
 
-	<p>
-		<strong>Type:</strong>
-		{{ commander.type_line }}
-	</p>
+            <!-- Commander Artwork -->
+            <div class="col-lg-5">
+                <div class="info-panel d-flex align-items-center justify-content-center">
 
-	<p>
-		<strong>Card Text:</strong>
-		{{ commander.oracle_text }}
-	</p>
+                    {% if commander.image_uris %}
+                        <img
+                            src="{{ commander.image_uris.normal }}"
+                            alt="{{ commander.name }}"
+                            class="commander-image"
+                        >
+                    {% elif commander.card_faces %}
+                        <img
+                            src="{{ commander.card_faces[0].image_uris.normal }}"
+                            alt="{{ commander.name }}"
+                            class="commander-image"
+                        >
+                    {% endif %}
 
-	<p>
-		<strong>Commander Legal:</strong>
-		{{ commander.legalities.commander }}
-	</p>
-<hr>
+                </div>
+            </div>
 
-<h2>Set Your Deck Budget</h2>
+            <!-- Commander Information -->
+            <div class="col-lg-7">
+                <div class="info-panel">
 
-<p>
-    Enter the maximum amount you want to spend on your Commander deck.
-</p>
+                    <h2 class="fw-bold mb-4">
+                        {{ commander.name }}
+                    </h2>
 
-<form action="/build" method="POST">
+                    <p>
+                        <span class="info-label">Mana Cost:</span>
+                        {{ commander.mana_cost | default("N/A", true) }}
+                    </p>
 
-    <input
-        type="hidden"
-        name="commander_name"
-        value="{{ commander.name }}"
-    >
+                    <p>
+                        <span class="info-label">Color Identity:</span>
+                        {% if commander.color_identity %}
+                            {{ commander.color_identity | join(", ") }}
+                        {% else %}
+                            Colorless
+                        {% endif %}
+                    </p>
 
-    <label for="budget">Deck Budget: $</label>
+                    <p>
+                        <span class="info-label">Type:</span>
+                        {{ commander.type_line }}
+                    </p>
 
-    <input
-        type="number"
-        id="budget"
-        name="budget"
-        min="1"
-        step="0.01"
-        placeholder="100.00"
-        required
-    >
+                    <hr class="border-secondary">
 
-    <button type="submit">
-        Build My Deck
-    </button>
+                    <h3 class="h5 highlight">
+                        Card Abilities
+                    </h3>
 
-</form>
+                    <p class="card-description muted-text">
+                        {{ commander.oracle_text | default("See card faces for details.", true) }}
+                    </p>
 
-<br>
-	<a href="/">Search for another Commander</a>
+                    <hr class="border-secondary">
+
+                    <p>
+                        <span class="info-label">Commander Legality:</span>
+
+                        {% if commander.legalities.commander == "legal" %}
+                            <span class="badge bg-success">Legal</span>
+                        {% else %}
+                            <span class="badge bg-danger">
+                                {{ commander.legalities.commander }}
+                            </span>
+                        {% endif %}
+                    </p>
+
+                    <p class="mb-0">
+                        <span class="info-label">Estimated Card Price:</span>
+
+                        {% if commander.prices.usd %}
+                            ${{ commander.prices.usd }}
+                        {% else %}
+                            Price unavailable
+                        {% endif %}
+                    </p>
+
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Budget Selection -->
+        <section class="budget-panel">
+
+            <h2 class="h4 fw-bold highlight">
+                Set Your Deck Budget
+            </h2>
+
+            <p class="muted-text">
+                Enter the maximum amount you want to spend on your
+                Commander deck, including the Commander itself.
+            </p>
+
+            <form action="/build" method="POST">
+
+                <input
+                    type="hidden"
+                    name="commander_name"
+                    value="{{ commander.name }}"
+                >
+
+                <div class="row g-3 align-items-end">
+
+                    <div class="col-md-8">
+                        <label for="budget" class="form-label">
+                            Total Deck Budget
+                        </label>
+
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">$</span>
+
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="budget"
+                                name="budget"
+                                min="1"
+                                step="0.01"
+                                placeholder="100.00"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <button
+                            type="submit"
+                            class="btn btn-purple btn-lg w-100"
+                        >
+                            Build My Deck
+                        </button>
+                    </div>
+
+                </div>
+
+            </form>
+
+        </section>
+
+        <!-- Back Link -->
+        <div class="mt-4">
+            <a href="/" class="back-link">
+                &larr; Search for another Commander
+            </a>
+        </div>
+
+    </main>
+
+    <footer class="text-center muted-text py-4">
+        IST 440W Capstone Project
+    </footer>
 
 </body>
-
 </html>

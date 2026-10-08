@@ -1,98 +1,371 @@
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-	<title>Your Commander Deck</title>
+    <title>Your Commander Deck | Budget Commander Deck Builder</title>
+
+    <!-- Bootstrap 5 -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <style>
+        body {
+            background-color: #101827;
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background-color: #172238;
+            border-bottom: 1px solid #334155;
+        }
+
+        .navbar-brand {
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        .navbar-brand:hover {
+            color: #c4b5fd;
+        }
+
+        .highlight {
+            color: #a78bfa;
+        }
+
+        .muted-text {
+            color: #cbd5e1;
+        }
+
+        .dashboard-panel,
+        .deck-panel {
+            background-color: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 14px;
+            padding: 24px;
+        }
+
+        .stat-label {
+            color: #cbd5e1;
+            font-size: 0.9rem;
+        }
+
+        .stat-value {
+            font-size: 1.35rem;
+            font-weight: 700;
+        }
+
+        .progress {
+            height: 14px;
+            background-color: #334155;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background-color: #8b5cf6;
+            height: 100%;
+        }
+
+        .btn-purple {
+            background-color: #7c3aed;
+            border-color: #7c3aed;
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-purple:hover {
+            background-color: #6d28d9;
+            border-color: #6d28d9;
+            color: white;
+        }
+
+        .deck-table {
+            --bs-table-bg: transparent;
+            --bs-table-color: #f8fafc;
+            --bs-table-border-color: #475569;
+        }
+
+        .deck-table th {
+            color: #c4b5fd;
+        }
+
+        .commander-row {
+            background-color: rgba(124, 58, 237, 0.12);
+        }
+
+        .badge-commander {
+            background-color: #7c3aed;
+            color: #ffffff;
+        }
+
+        .btn-remove {
+            border-color: #f87171;
+            color: #fca5a5;
+        }
+
+        .btn-remove:hover {
+            background-color: #dc2626;
+            border-color: #dc2626;
+            color: white;
+        }
+
+        .alert-custom {
+            background-color: #422006;
+            border: 1px solid #f59e0b;
+            color: #fef3c7;
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .empty-state {
+            background-color: #172238;
+            border: 1px dashed #475569;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+        }
+    </style>
 </head>
 
 <body>
 
-	<h1>Your Commander Deck</h1>
-    {% if message %}
+    <!-- Navigation -->
+    <nav class="navbar navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                Budget Commander Deck Builder
+            </a>
 
-    <p>
-        <strong>{{ message }}</strong>
-    </p>
+            <a href="/continue-building" class="btn btn-purple">
+                Continue Building
+            </a>
+        </div>
+    </nav>
 
-{% endif %}
+    <main class="container py-5">
 
-	<h2>{{ commander_name }}</h2>
+        <!-- Page Heading -->
+        <div class="mb-4">
+            <h1 class="fw-bold">
+                Your <span class="highlight">Commander Deck</span>
+            </h1>
 
-	<p>
-		<strong>Deck Size:</strong>
-		{{ deck_size }} / 100
-	</p>
+            <p class="muted-text">
+                Review your selected cards, deck size, and remaining budget.
+            </p>
+        </div>
 
-	<p>
-		<strong>Estimated Cost:</strong>
-		${{ "%.2f"|format(deck_cost) }}
-		/
-		${{ "%.2f"|format(budget) }}
-	</p>
+        <!-- Validation Messages -->
+        {% if message %}
+            <div class="alert-custom mb-4" role="alert">
+                <strong>{{ message }}</strong>
+            </div>
+        {% endif %}
 
-	<p>
-		<strong>Remaining Budget:</strong>
-		${{ "%.2f"|format(budget - deck_cost) }}
-	</p>
+        <!-- Deck Summary -->
+        <section class="dashboard-panel mb-4">
 
-	<hr>
+            <h2 class="h4 fw-bold mb-4">
+                {{ commander_name }}
+            </h2>
 
-	<h2>Cards in Your Deck</h2>
+            <div class="row g-4">
 
-	{% if deck %}
+                <div class="col-6 col-lg-3">
+                    <div class="stat-label">Deck Size</div>
+                    <div class="stat-value">
+                        {{ deck_size }} / 100
+                    </div>
+                </div>
 
-		{% for card in deck %}
+                <div class="col-6 col-lg-3">
+                    <div class="stat-label">Deck Budget</div>
+                    <div class="stat-value">
+                        ${{ "%.2f"|format(budget) }}
+                    </div>
+                </div>
 
-    <div>
+                <div class="col-6 col-lg-3">
+                    <div class="stat-label">Estimated Cost</div>
+                    <div class="stat-value">
+                        ${{ "%.2f"|format(deck_cost) }}
+                    </div>
+                </div>
 
-        <p>
-            {{ card.name }}
-            -
-            ${{ "%.2f"|format(card.price) }}
-        </p>
+                <div class="col-6 col-lg-3">
+                    <div class="stat-label">Remaining Budget</div>
+                    <div class="stat-value">
+                        ${{ "%.2f"|format(budget - deck_cost) }}
+                    </div>
+                </div>
 
-        <form action="/remove-card" method="POST">
+            </div>
 
-            <input
-                type="hidden"
-                name="card_name"
-                value="{{ card.name }}"
-            >
+            <!-- Budget Progress -->
+            {% set budget_percentage = (
+                (deck_cost / budget * 100)
+                if budget > 0 else 0
+            ) %}
 
-            <button type="submit">
-                Remove
-            </button>
+            {% set budget_percentage = [budget_percentage, 100] | min %}
 
-        </form>
+            <div class="mt-4">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="stat-label">Budget Used</span>
+                    <span class="stat-label">
+                        {{ "%.1f"|format(budget_percentage) }}%
+                    </span>
+                </div>
 
-    </div>
+                <div class="progress">
+                    <div
+                        class="progress-bar"
+                        role="progressbar"
+                        style="width: {{ budget_percentage }}%;"
+                        aria-valuenow="{{ budget_percentage }}"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                    ></div>
+                </div>
+            </div>
 
-    <br>
+        </section>
 
-{% endfor %}
+        <!-- Deck Contents -->
+        <section class="deck-panel">
 
-	{% else %}
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="h4 fw-bold mb-0">
+                    Cards in Your Deck
+                </h2>
 
-		<p>No cards have been added yet.</p>
+                <span class="muted-text">
+                    {{ deck_size }} cards
+                </span>
+            </div>
 
-	{% endif %}
+            <div class="table-responsive">
+                <table class="table deck-table align-middle">
 
-<hr>
+                    <thead>
+                        <tr>
+                            <th>Card Name</th>
+                            <th>Role</th>
+                            <th class="text-end">Price</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
 
-<a href="/continue-building">
-    Continue Building
-</a>
+                    <tbody>
 
-<br>
-<br>
+                        <!-- Commander -->
+                        <tr class="commander-row">
+                            <td>
+                                <strong>{{ commander_name }}</strong>
+                            </td>
 
-<a href="/">
-    Start Over
-</a>
+                            <td>
+                                <span class="badge badge-commander">
+                                    Commander
+                                </span>
+                            </td>
+
+                            <td class="text-end">
+                                ${{ "%.2f"|format(commander_price) }}
+                            </td>
+
+                            <td class="text-end">
+                                <span class="muted-text">Required</span>
+                            </td>
+                        </tr>
+
+                        <!-- Added Cards -->
+                        {% for card in deck %}
+
+                            <tr>
+                                <td>
+                                    {{ card.name }}
+                                </td>
+
+                                <td>
+                                    <span class="muted-text">
+                                        Deck Card
+                                    </span>
+                                </td>
+
+                                <td class="text-end">
+                                    ${{ "%.2f"|format(card.price) }}
+                                </td>
+
+                                <td class="text-end">
+                                    <form
+                                        action="/remove-card"
+                                        method="POST"
+                                        class="mb-0"
+                                    >
+                                        <input
+                                            type="hidden"
+                                            name="card_name"
+                                            value="{{ card.name }}"
+                                        >
+
+                                        <button
+                                            type="submit"
+                                            class="btn btn-remove btn-sm"
+                                        >
+                                            Remove
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+            </div>
+
+            {% if not deck %}
+                <div class="empty-state mt-3">
+                    <h3 class="h5">No Additional Cards Yet</h3>
+                    <p class="muted-text mb-3">
+                        Your Commander is ready. Start adding cards
+                        to build your deck.
+                    </p>
+
+                    <a href="/continue-building" class="btn btn-purple">
+                        Find Cards
+                    </a>
+                </div>
+            {% endif %}
+
+        </section>
+
+        <!-- Navigation -->
+        <div class="d-flex gap-3 mt-4 flex-wrap">
+
+            <a href="/continue-building" class="btn btn-purple btn-lg">
+                Continue Building
+            </a>
+
+            <a href="/" class="btn btn-outline-light btn-lg">
+                Start Over
+            </a>
+
+        </div>
+
+    </main>
+
+    <footer class="text-center muted-text py-4">
+        IST 440W Capstone Project
+    </footer>
 
 </body>
-
 </html>
