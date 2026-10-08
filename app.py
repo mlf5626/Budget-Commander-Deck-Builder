@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, session, redirect, url_for
 import requests
 from functools import lru_cache
 import sqlite3
+from legality import validate_deck
 from database import (
     init_db, save_deck, list_saved_decks, load_saved_deck,
     update_saved_deck, delete_saved_deck,
@@ -307,6 +308,8 @@ def deck():
     )
 
 
+    legality = validate_deck(commander_name, deck, basic_lands)
+
     return render_template(
         "deck.html",
         commander_name=commander_name,
@@ -319,7 +322,8 @@ def deck():
         basic_land_count=basic_land_count,
         basic_land_prices=basic_land_prices,
         message=message,
-        saved_deck_id=session.get("saved_deck_id")
+        saved_deck_id=session.get("saved_deck_id"),
+        legality=legality
     )
 
 @app.route("/continue-building")

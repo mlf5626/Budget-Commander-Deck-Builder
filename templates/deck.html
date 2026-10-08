@@ -237,6 +237,37 @@
 
         </section>
 
+<!-- Commander Legality -->
+<section class="deck-panel mb-4" aria-labelledby="legality-heading">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 id="legality-heading" class="h4 fw-bold mb-0">Commander Legality</h2>
+        {% if legality.status == "Legal" %}
+            <span class="badge bg-success fs-6">Legal</span>
+        {% elif legality.status == "Illegal" %}
+            <span class="badge bg-danger fs-6">Illegal</span>
+        {% else %}
+            <span class="badge bg-warning text-dark fs-6">{{ legality.status }}</span>
+        {% endif %}
+    </div>
+    <p class="muted-text mb-3">
+        {{ legality.count }} / 100 cards &mdash; {{ legality.remaining }} remaining.
+        Checks use current Scryfall data when available.
+    </p>
+    {% for issue in legality.issues %}
+        <div class="alert alert-danger" role="alert">{{ issue }}</div>
+    {% endfor %}
+    {% for warning in legality.warnings %}
+        <div class="alert alert-warning" role="status">{{ warning }}</div>
+    {% endfor %}
+    {% if legality.status == "Legal" %}
+        <p class="text-success mb-0">All supported single-commander checks passed.</p>
+    {% endif %}
+    <p class="muted-text small mt-3 mb-0">
+        This is a basic single-commander checker. Special commander pairs, companion,
+        card-specific deck-building exceptions, and all tournament rules are not fully supported.
+    </p>
+</section>
+
         <!-- Deck Contents -->
         <section class="deck-panel">
 
