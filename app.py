@@ -1,9 +1,14 @@
 from flask import Flask, render_template, request, session, redirect, url_for
 import requests
 from functools import lru_cache
+import sqlite3
+from database import init_db
 
 app = Flask(__name__)
 app.secret_key = "budget-commander-deck-builder"
+
+# Initialize the SQLite database
+init_db()
 
 
 @lru_cache(maxsize=10)
@@ -238,6 +243,8 @@ def add_card():
 
     deck.append(card)
     session["deck"] = deck
+   
+
 
     return redirect(url_for("deck"))
 
