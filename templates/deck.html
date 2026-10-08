@@ -326,13 +326,78 @@
                             </tr>
 
                         {% endfor %}
+                        
+<!-- Basic Lands -->
+{% for land_name, quantity in basic_lands.items() %}
+
+    <tr>
+        <td>
+            {{ land_name }}
+        </td>
+
+        <td>
+            <span class="badge bg-secondary">
+                Basic Land × {{ quantity }}
+            </span>
+        </td>
+
+        <td class="text-end">
+            {% if land_name in basic_land_prices %}
+        ${{ "%.2f"|format(basic_land_prices[land_name] * quantity) }}
+    {% else %}
+        <span class="muted-text">Price unavailable</span>
+    {% endif %}
+        </td>
+
+        
+<td class="text-end">
+
+    <form
+        action="/remove-basic-land"
+        method="POST"
+        class="d-flex justify-content-end align-items-center gap-2 mb-0"
+    >
+
+        <input
+            type="hidden"
+            name="land_name"
+            value="{{ land_name }}"
+        >
+
+        <input
+            type="number"
+            name="quantity"
+            min="1"
+            max="{{ quantity }}"
+            value="1"
+            class="form-control form-control-sm"
+            style="width: 75px;"
+            aria-label="Quantity of {{ land_name }} to remove"
+            required
+        >
+
+        <button
+            type="submit"
+            class="btn btn-remove btn-sm"
+        >
+            Remove
+        </button>
+
+    </form>
+
+</td>
+
+    </tr>
+
+{% endfor %}
+
 
                     </tbody>
 
                 </table>
             </div>
 
-            {% if not deck %}
+            {% if not deck and not basic_lands %}
                 <div class="empty-state mt-3">
                     <h3 class="h5">No Additional Cards Yet</h3>
                     <p class="muted-text mb-3">
