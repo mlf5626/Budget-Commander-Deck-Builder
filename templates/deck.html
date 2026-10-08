@@ -420,6 +420,26 @@
                 Continue Building
             </a>
 
+            
+<!-- Save Deck and My Saved Decks buttons -->
+<div class="d-flex flex-wrap gap-2 my-3">
+    <form action="{{ url_for('save_current_deck') }}" method="POST">
+        <button type="submit" class="btn btn-primary">
+            {% if saved_deck_id %}
+                Save Changes
+            {% else %}
+                Save Deck
+            {% endif %}
+        </button>
+    </form>
+
+    <a href="{{ url_for('saved_decks') }}" class="btn btn-outline-light">
+        My Saved Decks
+    </a>
+</div>
+
+
+
             <a href="/" class="btn btn-outline-light btn-lg">
                 Start Over
             </a>

@@ -2,7 +2,10 @@ from flask import Flask, render_template, request, session, redirect, url_for
 import requests
 from functools import lru_cache
 import sqlite3
-from database import init_db
+from database import (
+    init_db, save_deck, list_saved_decks, load_saved_deck,
+    update_saved_deck, delete_saved_deck,
+)
 
 app = Flask(__name__)
 app.secret_key = "budget-commander-deck-builder"
@@ -118,6 +121,7 @@ def build():
     session["budget"] = budget
     session["deck"] = []
     session["basic_lands"] = {}
+    session.pop("saved_deck_id", None)
 
     # Look up the selected Commander again
     commander_url = "https://api.scryfall.com/cards/named"
@@ -314,7 +318,8 @@ def deck():
         basic_lands=basic_lands,
         basic_land_count=basic_land_count,
         basic_land_prices=basic_land_prices,
-        message=message
+        message=message,
+        saved_deck_id=session.get("saved_deck_id")
     )
 
 @app.route("/continue-building")
@@ -785,6 +790,62 @@ def remove_basic_land():
     session["basic_lands"] = basic_lands
 
     return redirect(url_for("deck"))
+
+
+
+@app.route("/save-deck", methods=["POST"])
+def save_current_deck():
+    commander_name = session.get("commander_name")
+    if not commander_name:
+        return redirect(url_for("home"))
+    deck = session.get("deck", [])
+    basic_lands = session.get("basic_lands", {})
+    commander_price = float(session.get("commander_price", 0))
+    budget = float(session.get("budget", 0))
+    saved_id = session.get("saved_deck_id")
+    if saved_id is not None:
+        updated = update_saved_deck(
+            int(saved_id), commander_name, commander_price, budget, deck, basic_lands
+        )
+        if not updated:
+            session.pop("saved_deck_id", None)
+            session["message"] = "Saved deck not found. Please save again."
+            return redirect(url_for("deck"))
+        session["message"] = "Changes saved successfully."
+    else:
+        saved_id = save_deck(commander_name, commander_price, budget, deck, basic_lands)
+        session["saved_deck_id"] = saved_id
+        session["message"] = "Deck saved successfully."
+    return redirect(url_for("deck"))
+
+
+@app.route("/saved-decks")
+def saved_decks():
+    return render_template("saved_decks.html", decks=list_saved_decks())
+
+
+@app.route("/load-deck/<int:deck_id>", methods=["POST"])
+def load_deck(deck_id):
+    saved = load_saved_deck(deck_id)
+    if saved is None:
+        return "Saved deck not found.", 404
+    session["commander_name"] = saved["commander_name"]
+    session["commander_price"] = saved["commander_price"]
+    session["budget"] = saved["budget"]
+    session["deck"] = saved["deck"]
+    session["basic_lands"] = saved["basic_lands"]
+    session["saved_deck_id"] = saved["id"]
+    session["message"] = "Saved deck loaded. You can continue editing it."
+    return redirect(url_for("deck"))
+
+
+@app.route("/delete-deck/<int:deck_id>", methods=["POST"])
+def delete_deck(deck_id):
+    if not delete_saved_deck(deck_id):
+        return "Saved deck not found.", 404
+    if session.get("saved_deck_id") == deck_id:
+        session.pop("saved_deck_id", None)
+    return redirect(url_for("saved_decks"))
 
 
 if __name__ == "__main__":
