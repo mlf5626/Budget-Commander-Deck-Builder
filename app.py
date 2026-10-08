@@ -55,6 +55,10 @@ def search():
 def build():
     commander_name = request.form.get("commander_name")
     budget = request.form.get("budget")
+    commander_price = float(
+        session.get("commander_price", 0)
+    )
+
     
     session["commander_name"] = commander_name
     session["budget"] = budget
@@ -115,7 +119,7 @@ def build():
     cards=cards,
     deck=session["deck"],
     deck_size=1,
-    deck_cost=0.00
+    deck_cost=commander_price
     )
 
 @app.route("/add-card", methods=["POST"])
@@ -145,7 +149,11 @@ def add_card():
         return redirect(url_for("deck"))
 
     # Calculate current deck cost
-    current_deck_cost = sum(
+    commander_price = float(
+        session.get("commander_price", 0)
+    )
+
+    current_deck_cost = commander_price + sum(
         card["price"] for card in deck
     )
 
@@ -188,12 +196,19 @@ def deck():
     commander_name = session.get("commander_name")
     budget = float(session.get("budget", 0))
 
-    deck_cost = sum(card["price"] for card in deck)
+    commander_price = float(
+        session.get("commander_price", 0)
+    )
+
+    deck_cost = commander_price + sum(
+        card["price"] for card in deck
+    )
     deck_size = len(deck) + 1
 
     return render_template(
         "deck.html",
         commander_name=commander_name,
+        commander_price=commander_price,
         budget=budget,
         deck=deck,
         deck_cost=deck_cost,
@@ -249,7 +264,13 @@ def continue_building():
 
     cards = card_response.json()["data"][:20]
 
-    deck_cost = sum(card["price"] for card in deck)
+    commander_price = float(
+        session.get("commander_price", 0)
+    )
+
+    deck_cost = commander_price + sum(
+        card["price"] for card in deck
+    )
     deck_size = len(deck) + 1
 
     return render_template(
@@ -314,7 +335,13 @@ def search_cards():
     else:
         cards = card_response.json()["data"][:20]
 
-    deck_cost = sum(card["price"] for card in deck)
+    commander_price = float(
+        session.get("commander_price", 0)
+    )
+
+    deck_cost = commander_price + sum(
+        card["price"] for card in deck
+    )
     deck_size = len(deck) + 1
 
     return render_template(
@@ -416,7 +443,13 @@ def category():
     else:
         cards = card_response.json()["data"][:20]
 
-    deck_cost = sum(card["price"] for card in deck)
+    commander_price = float(
+        session.get("commander_price", 0)
+    )
+
+    deck_cost = commander_price + sum(
+        card["price"] for card in deck
+    )
     deck_size = len(deck) + 1
 
     return render_template(
