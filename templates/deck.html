@@ -452,6 +452,12 @@
             </a>
 
             
+<!-- Export and purchase options -->
+<div class="d-flex flex-wrap gap-2 my-3">
+    <a href="{{ url_for('export_deck') }}" class="btn btn-success">Export Deck (.txt)</a>
+    <a href="{{ url_for('buy_cards') }}" class="btn btn-outline-info">Buy Cards</a>
+</div>
+
 <!-- Save Deck and My Saved Decks buttons -->
 <div class="d-flex flex-wrap gap-2 my-3">
     <form action="{{ url_for('save_current_deck') }}" method="POST">

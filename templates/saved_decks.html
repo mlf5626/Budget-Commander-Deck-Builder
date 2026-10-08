@@ -30,6 +30,7 @@
               <form action="{{ url_for('load_deck', deck_id=saved.id) }}" method="post">
                 <button type="submit" class="btn btn-purple">Load &amp; Edit</button>
               </form>
+              <a href="{{ url_for('export_saved_deck', deck_id=saved.id) }}" class="btn btn-outline-info">Export .txt</a>
               <form action="{{ url_for('delete_deck', deck_id=saved.id) }}" method="post" onsubmit="return confirm('Delete this saved deck permanently?');">
                 <button type="submit" class="btn btn-outline-danger">Delete</button>
               </form>

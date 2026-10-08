@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request, session, redirect, url_for
+from flask import Flask, render_template, request, session, redirect, url_for, Response
 import requests
 from functools import lru_cache
 import sqlite3
+from urllib.parse import quote
+import re
 from legality import validate_deck
 from recommendations import fetch_recommendations, CATEGORIES
 from database import (
@@ -900,6 +902,73 @@ def delete_deck(deck_id):
         session.pop("saved_deck_id", None)
     return redirect(url_for("saved_decks"))
 
+
+
+
+def format_deck_export(commander_name, deck_cards, basic_lands):
+    """Moxfield-style plaintext decklist, commander first."""
+    lines = [f"1 {commander_name}", ""]
+    for card in deck_cards:
+        lines.append(f"1 {card['name']}")
+    for land_name, quantity in sorted(basic_lands.items()):
+        if int(quantity) > 0:
+            lines.append(f"{int(quantity)} {land_name}")
+    return "\n".join(lines) + "\n"
+
+
+def deck_download_response(commander_name, deck_cards, basic_lands):
+    content = format_deck_export(commander_name, deck_cards, basic_lands)
+    # ASCII-only filename avoids unsafe and unsupported characters in Content-Disposition.
+    filename = re.sub(r"[^A-Za-z0-9_-]+", "-", commander_name).strip("-")[:70] or "commander"
+    return Response(
+        content,
+        mimetype="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}-deck.txt"'}
+    )
+
+
+@app.route("/export-deck")
+def export_deck():
+    commander_name = session.get("commander_name")
+    if not commander_name:
+        return redirect(url_for("home"))
+    return deck_download_response(
+        commander_name, session.get("deck", []), session.get("basic_lands", {})
+    )
+
+
+@app.route("/export-saved-deck/<int:deck_id>")
+def export_saved_deck(deck_id):
+    saved = load_saved_deck(deck_id)
+    if saved is None:
+        return "Saved deck not found.", 404
+    return deck_download_response(
+        saved["commander_name"], saved["deck"], saved["basic_lands"]
+    )
+
+
+@app.route("/buy-cards")
+def buy_cards():
+    commander_name = session.get("commander_name")
+    if not commander_name:
+        return redirect(url_for("home"))
+    deck_cards = session.get("deck", [])
+    basic_lands = session.get("basic_lands", {})
+    commander_price = float(session.get("commander_price", 0))
+    rows = [{"name": commander_name, "quantity": 1, "unit_price": commander_price}]
+    for card in deck_cards:
+        rows.append({"name": card["name"], "quantity": 1, "unit_price": float(card["price"])})
+    for name, qty in sorted(basic_lands.items()):
+        price = get_basic_land_price(name)
+        rows.append({"name": name, "quantity": qty, "unit_price": price})
+    for row in rows:
+        row["tcgplayer_url"] = "https://www.tcgplayer.com/search/magic/product?productLineName=magic&q=" + quote(row["name"], safe="")
+    total = sum(row["quantity"] * row["unit_price"] for row in rows if row["unit_price"] is not None)
+    return render_template(
+        "buy.html", commander_name=commander_name, rows=rows,
+        estimated_total=total, budget=float(session.get("budget", 0)),
+        unpriced=any(row["unit_price"] is None for row in rows)
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)
