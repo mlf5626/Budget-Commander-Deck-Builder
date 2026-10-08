@@ -58,7 +58,20 @@ def build():
     commander_price = float(
         session.get("commander_price", 0)
     )
+    try:
+        budget_value = float(budget)
+    except (TypeError, ValueError):
+        return "Please enter a valid deck budget."
 
+    if budget_value <= 0:
+        return "Deck budget must be greater than $0."
+
+    if commander_price > budget_value:
+        return (
+            f"Your Commander costs ${commander_price:.2f}, "
+            f"which exceeds your ${budget_value:.2f} budget. "
+            "Please go back and choose a higher budget."
+        )
     
     session["commander_name"] = commander_name
     session["budget"] = budget
