@@ -30,11 +30,25 @@ THEMES = [
 ]
 def detect_theme(commander):
     text = commander.get("oracle_text", "").lower()
+
     for face in commander.get("card_faces", []):
         text += " " + face.get("oracle_text", "").lower()
+
+    matched_themes = []
+
     for term, label, query in THEMES:
         if term in text:
-            return label, query
+            matched_themes.append((label, query))
+
+    if matched_themes:
+        labels = [theme[0] for theme in matched_themes]
+        queries = [theme[1] for theme in matched_themes]
+
+        theme_label = ", ".join(labels)
+        theme_query = "(" + " OR ".join(queries) + ")"
+
+        return theme_label, theme_query
+
     return "Popular Commander staples", None
 
 def fetch_recommendations(commander, deck, remaining_budget, category="synergy", sort="popular"):
