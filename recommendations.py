@@ -51,6 +51,38 @@ def detect_theme(commander):
 
     return "Popular Commander staples", None
 
+def explain_recommendation(card, category="synergy"):
+    """Explain why a card matches a recommendation category."""
+    text = card.get("oracle_text", "").lower()
+
+    for face in card.get("card_faces", []):
+        text += " " + face.get("oracle_text", "").lower()
+
+    if category == "synergy":
+        matches = [
+            label
+            for term, label, query in THEMES
+            if term in text
+        ]
+
+        if matches:
+            return (
+                "Supports these strategy themes: "
+                + ", ".join(matches)
+                + "."
+            )
+
+        return "Matches the selected Commander strategy search."
+
+    explanations = {
+        "ramp": "Helps generate mana or develop your mana resources.",
+        "draw": "Provides opportunities to draw additional cards.",
+        "removal": "Provides ways to remove opposing permanents.",
+        "protection": "Helps protect your creatures or other permanents.",
+    }
+
+    return explanations.get(category, "Matches your selected category.")
+
 def fetch_recommendations(commander, deck, remaining_budget, category="synergy", sort="popular"):
     """Return (cards, description, error). Filter owned/unpriced/over-budget cards."""
     theme_label, theme_query = detect_theme(commander)
@@ -89,6 +121,7 @@ def fetch_recommendations(commander, deck, remaining_budget, category="synergy",
                 continue
             if card.get("name", "").casefold() in owned or amount > remaining_budget:
                 continue
+            card["recommendation_reason"] = explain_recommendation(card, category)
             cards.append(card)
             if len(cards) >= 18:
                 break

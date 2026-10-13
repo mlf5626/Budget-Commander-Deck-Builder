@@ -520,7 +520,13 @@
                             <p class="card-type mb-2">
                                 {{ card.type_line }}
                             </p>
-
+                            {% if recommendation_mode and card.recommendation_reason %}
+                                <p class="muted-text small mb-2">
+                                    <strong class="highlight">Why recommended:</strong>
+                                    {{ card.recommendation_reason }}
+                                </p>
+                            {% endif %}
+                            
                             <p class="card-price mt-auto">
                                 {% if card.prices.usd %}
                                     ${{ card.prices.usd }}
