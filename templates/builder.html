@@ -22,7 +22,10 @@
         .navbar {
             background-color: #172238;
             border-bottom: 1px solid #334155;
-        }
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+        }   
 
         .navbar-brand {
             color: #ffffff;
@@ -526,7 +529,7 @@
                                     {{ card.recommendation_reason }}
                                 </p>
                             {% endif %}
-                            
+
                             <p class="card-price mt-auto">
                                 {% if card.prices.usd %}
                                     ${{ card.prices.usd }}
@@ -571,6 +574,11 @@
                                 {% else %}
                                     <form action="/add-card" method="POST">
 
+                                        <input
+                                            type="hidden"
+                                            name="return_url"
+                                            value="{{ request.full_path }}"
+                                        >
                                         <input
                                             type="hidden"
                                             name="card_name"
@@ -643,6 +651,25 @@
     <footer class="text-center muted-text py-4">
         IST 440W Capstone Project
     </footer>
+
+<script>
+    // Remember scroll position when adding a card
+    document.querySelectorAll('form[action="/add-card"]').forEach(form => {
+        form.addEventListener('submit', function () {
+            sessionStorage.setItem('builderScrollY', window.scrollY);
+        });
+    });
+
+    // Restore scroll position after returning to Builder
+    window.addEventListener('load', function () {
+        const savedPosition = sessionStorage.getItem('builderScrollY');
+
+        if (savedPosition !== null) {
+            window.scrollTo(0, Number(savedPosition));
+            sessionStorage.removeItem('builderScrollY');
+        }
+    });
+</script>
 
 </body>
 </html>

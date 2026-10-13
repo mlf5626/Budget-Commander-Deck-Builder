@@ -125,7 +125,14 @@ def build():
     session["budget"] = budget
     session["deck"] = []
     session["basic_lands"] = {}
+    
     session.pop("saved_deck_id", None)
+    session.pop("builder_view", None)
+    session.pop("builder_search", None)
+    session.pop("builder_category", None)
+    session.pop("builder_max_price", None)
+    session.pop("builder_recommendation_category", None)
+    session.pop("builder_recommendation_sort", None)
 
     # Look up the selected Commander again
     commander_url = "https://api.scryfall.com/cards/named"
@@ -254,7 +261,28 @@ def add_card():
    
 
 
-    return redirect(url_for("deck"))
+    if session.get("builder_view") == "search":
+        return redirect(url_for("restore_card_search"))
+
+    if session.get("builder_view") == "category":
+        return redirect(
+            url_for(
+                "category",
+                category=session.get("builder_category", "ramp"),
+                max_price=session.get("builder_max_price", "5.00")
+            )
+        )
+
+    if session.get("builder_view") == "recommendations":
+        return redirect(
+            url_for(
+                "recommendations",
+                category=session.get("builder_recommendation_category", "synergy"),
+                sort=session.get("builder_recommendation_sort", "popular")
+            )
+        )
+    
+    return redirect(url_for("continue_building"))
 
 @app.route("/remove-card", methods=["POST"])
 def remove_card():
@@ -415,9 +443,25 @@ def continue_building():
         deck_size=deck_size
     )
 
-@app.route("/search-cards", methods=["POST"])
+@app.route("/restore-card-search")
+def restore_card_search():
+    search_term = session.get("builder_search", "")
+
+    if not search_term:
+        return redirect(url_for("continue_building"))
+
+    return redirect(url_for("search_cards", card_search=search_term))
+
+@app.route("/search-cards", methods=["GET", "POST"])
 def search_cards():
-    card_search = request.form.get("card_search", "").strip()
+    card_search = (
+        request.form.get("card_search", "")
+        if request.method == "POST"
+        else request.args.get("card_search", "")
+    ).strip()
+
+    session["builder_view"] = "search"
+    session["builder_search"] = card_search
 
     commander_name = session.get("commander_name")
     budget = float(session.get("budget", 0))
@@ -507,10 +551,18 @@ def search_cards():
         card_search=card_search
     )
 
-@app.route("/category", methods=["POST"])
+@app.route("/category", methods=["GET", "POST"])
 def category():
-    selected_category = request.form.get("category")
-    max_price = request.form.get("max_price", "5.00")
+    if request.method == "POST":
+        selected_category = request.form.get("category")
+        max_price = request.form.get("max_price", "5.00")
+    else:
+        selected_category = request.args.get("category")
+        max_price = request.args.get("max_price", "5.00")
+    
+    session["builder_view"] = "category"
+    session["builder_category"] = selected_category
+    session["builder_max_price"] = max_price
 
     try:
         max_price_value = float(max_price)
@@ -645,6 +697,11 @@ def recommendations():
         return redirect(url_for("home"))
     category = request.args.get("category", "synergy")
     sort = request.args.get("sort", "popular")
+
+    session["builder_view"] = "recommendations"
+    session["builder_recommendation_category"] = category
+    session["builder_recommendation_sort"] = sort
+
     deck_cards = session.get("deck", [])
     basic_lands = session.get("basic_lands", {})
     budget = float(session.get("budget", 0))
