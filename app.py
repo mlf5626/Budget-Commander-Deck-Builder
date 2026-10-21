@@ -27,21 +27,21 @@ def get_basic_land_price(land_name):
         "Accept": "application/json"
     }
 
-    response = requests.get(
-        "https://api.scryfall.com/cards/search",
-        params={
-            "q": f'!"{land_name}" t:basic game:paper usd>0',
-            "order": "usd",
-            "dir": "asc"
-        },
-        headers=headers,
-        timeout=10
-    )
-
-    if response.status_code != 200:
+    try:
+        response = requests.get(
+            "https://api.scryfall.com/cards/search",
+            params={
+                "q": f'!"{land_name}" t:basic game:paper usd>0',
+                "order": "usd",
+                "dir": "asc"
+            },
+            headers=headers,
+            timeout=10
+        )
+        response.raise_for_status()
+        cards = response.json().get("data", [])
+    except (requests.RequestException, ValueError, TypeError):
         return None
-
-    cards = response.json().get("data", [])
 
     for card in cards:
         price = card.get("prices", {}).get("usd")
@@ -125,6 +125,7 @@ def build():
     session["budget"] = budget
     session["deck"] = []
     session["basic_lands"] = {}
+    session.pop("commander_cache", None)
     
     session.pop("saved_deck_id", None)
     session.pop("builder_view", None)
@@ -154,6 +155,7 @@ def build():
         return "Unable to retrieve Commander."
 
     commander = commander_response.json()
+    session["commander_cache"] = {"name": commander.get("name", commander_name), "color_identity": commander.get("color_identity", [])}
 
     # Convert color identity into a Scryfall search value
     color_identity = "".join(commander["color_identity"])
@@ -383,6 +385,7 @@ def continue_building():
         return "Unable to retrieve Commander."
 
     commander = commander_response.json()
+    session["commander_cache"] = {"name": commander.get("name", commander_name), "color_identity": commander.get("color_identity", [])}
 
     color_identity = "".join(commander["color_identity"])
 
@@ -475,22 +478,36 @@ def search_cards():
         "Accept": "application/json"
     }
 
-    # Retrieve the selected Commander
-    commander_response = requests.get(
-        "https://api.scryfall.com/cards/named",
-        params={"exact": commander_name},
-        headers=headers,
-        timeout=10
-    )
+    # Use cached Commander identity if Scryfall cannot be reached.
+    # The cache stores only the small fields needed by builder.html.
+    commander = session.get("commander_cache")
+    commander_error = None
+    try:
+        commander_response = requests.get(
+            "https://api.scryfall.com/cards/named",
+            params={"exact": commander_name},
+            headers=headers,
+            timeout=10
+        )
+        commander_response.raise_for_status()
+        fresh_commander = commander_response.json()
+        commander = {
+            "name": fresh_commander.get("name", commander_name),
+            "color_identity": fresh_commander["color_identity"]
+        }
+        session["commander_cache"] = commander
+    except requests.Timeout:
+        commander_error = "Scryfall timed out while verifying your Commander."
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        commander_error = "Scryfall is unavailable, so your Commander could not be reverified."
 
-    if commander_response.status_code != 200:
-        return "Unable to retrieve Commander."
-
-    commander = commander_response.json()
+    if not commander or commander.get("name") != commander_name:
+        # No verified cached color identity; do not guess legality.
+        session["message"] = "Commander details are unavailable. Reconnect to Scryfall and open the Builder again."
+        return redirect(url_for("deck"))
 
     color_identity = "".join(commander["color_identity"])
 
-    # Search only for cards legal with this Commander
     search_query = (
         f"legal:commander "
         f"id<={color_identity} "
@@ -499,17 +516,27 @@ def search_cards():
         f"{card_search}"
     )
 
-    card_response = requests.get(
-        "https://api.scryfall.com/cards/search",
-        params={"q": search_query},
-        headers=headers,
-        timeout=10
-    )
-
-    if card_response.status_code != 200:
-        cards = []
-    else:
-        cards = card_response.json()["data"][:20]
+    cards = []
+    search_error = None
+    try:
+        card_response = requests.get(
+            "https://api.scryfall.com/cards/search",
+            params={"q": search_query},
+            headers=headers,
+            timeout=10
+        )
+        if card_response.status_code == 404:
+            # Scryfall uses HTTP 404 when a valid search has no matches.
+            cards = []
+        else:
+            card_response.raise_for_status()
+            cards = card_response.json()["data"][:20]
+    except requests.Timeout:
+        search_error = "Scryfall took too long to respond. Please try your search again."
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        search_error = "Unable to retrieve cards from Scryfall right now. Please try again shortly."
+    if commander_error and not search_error:
+        search_error = commander_error + " Search results may be unavailable; please retry when connected."
 
     commander_price = float(
         session.get("commander_price", 0)
@@ -548,7 +575,8 @@ def search_cards():
         deck=deck,
         deck_cost=deck_cost,
         deck_size=deck_size,
-        card_search=card_search
+        card_search=card_search,
+        search_error=search_error
     )
 
 @app.route("/category", methods=["GET", "POST"])

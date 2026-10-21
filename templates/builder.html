@@ -492,6 +492,9 @@
                 {% if recommendation_error %}
                     <div class="alert alert-warning" role="alert">{{ recommendation_error }}</div>
                 {% endif %}
+                {% if search_error %}
+                    <div class="alert alert-warning" role="alert">{{ search_error }}</div>
+                {% endif %}
                 <div class="row g-3">
 
                     {% for card in cards %}
@@ -618,6 +621,7 @@
 
                     {% else %}
 
+                    {% if not search_error %}
                     <div class="col-12">
                         <div class="filter-panel text-center">
                             <h3 class="h5">No Cards Found</h3>
@@ -627,6 +631,7 @@
                         </div>
                     </div>
 
+                    {% endif %}
                     {% endfor %}
 
                 </div>
