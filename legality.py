@@ -34,7 +34,30 @@ def validate_deck(commander_name, deck, basic_lands):
     count = 1 + len(deck) + sum(basic_lands.values())
     issues = []
     warnings = []
+    composition = {key: 0 for key in (
+        "Creatures", "Artifacts", "Enchantments", "Instants",
+        "Sorceries", "Lands", "Planeswalkers", "Other", "Unverified"
+    )}
+
+    def count_card_type(card_data, quantity=1):
+        """Assign one primary type per card so totals equal the deck size."""
+        if card_data is None:
+            composition["Unverified"] += quantity
+            return
+        type_line = card_data.get("type_line", "").split(" // ")[0]
+        for word, category in (
+            ("Creature", "Creatures"), ("Land", "Lands"),
+            ("Planeswalker", "Planeswalkers"), ("Instant", "Instants"),
+            ("Sorcery", "Sorceries"), ("Artifact", "Artifacts"),
+            ("Enchantment", "Enchantments"),
+        ):
+            if word in type_line.split():
+                composition[category] += quantity
+                return
+        composition["Other"] += quantity
+
     commander = lookup_card(commander_name) if commander_name else None
+    count_card_type(commander)
     if not commander:
         warnings.append("Commander information could not be verified with Scryfall.")
     else:
@@ -63,6 +86,7 @@ def validate_deck(commander_name, deck, basic_lands):
     colors = set(commander["color_identity"]) if commander else None
     for name in sorted(set(names), key=str.casefold):
         card = lookup_card(name)
+        count_card_type(card, frequencies[name.casefold()])
         if card is None:
             warnings.append(f"Could not verify card: {name}.")
             continue
@@ -73,6 +97,8 @@ def validate_deck(commander_name, deck, basic_lands):
         # Some cards override singleton via their Oracle text. We do not certify those exceptions here.
         if "a deck can have any number of cards named" in card["oracle_text"].lower():
             warnings.append(f"{name} has a special deck-construction rule; check its permitted quantity.")
+
+    composition["Lands"] += sum(basic_lands.values())
 
     land_colors = {"Plains": "W", "Island": "U", "Swamp": "B", "Mountain": "R", "Forest": "G"}
     for name, qty in basic_lands.items():
@@ -89,4 +115,4 @@ def validate_deck(commander_name, deck, basic_lands):
         status = "Legal"
     return {"status": status, "issues": list(dict.fromkeys(issues)),
             "warnings": list(dict.fromkeys(warnings)), "remaining": max(0, 100 - count),
-            "count": count}
+            "count": count, "composition": composition}

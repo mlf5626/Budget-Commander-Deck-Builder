@@ -268,6 +268,94 @@
     </p>
 </section>
 
+        <!-- Part Two Enhancement: Deck Readiness Summary -->
+        {% set within_budget = deck_cost <= budget %}
+        {% set card_count_complete = deck_size == 100 %}
+        {% set rules_passed = legality.status == "Legal" %}
+        {% set ready = card_count_complete and within_budget and rules_passed %}
+        <section class="deck-panel mb-4" aria-labelledby="readiness-heading">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <h2 id="readiness-heading" class="h4 fw-bold mb-0">Deck Readiness Summary</h2>
+                {% if ready %}
+                    <span class="badge bg-success fs-6">Ready — Supported Checks Passed</span>
+                {% else %}
+                    <span class="badge bg-warning text-dark fs-6">Not Ready Yet</span>
+                {% endif %}
+            </div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="stat-label">Deck Completion</div>
+                    <div class="stat-value">{{ deck_size }} / 100 cards</div>
+                    <div class="small muted-text">
+                        {% if card_count_complete %}Card count complete.
+                        {% elif deck_size < 100 %}{{ 100 - deck_size }} cards still needed.
+                        {% else %}{{ deck_size - 100 }} cards over the limit.{% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-label">Budget Status</div>
+                    <div class="stat-value {{ 'text-success' if within_budget else 'text-danger' }}">
+                        {{ 'Within Budget' if within_budget else 'Over Budget' }}
+                    </div>
+                    <div class="small muted-text">
+                        ${{ "%.2f"|format(deck_cost) }} of ${{ "%.2f"|format(budget) }} estimated
+                        {% if within_budget %}— ${{ "%.2f"|format(budget - deck_cost) }} remaining
+                        {% else %}— ${{ "%.2f"|format(deck_cost - budget) }} over{% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-label">Commander Legality</div>
+                    <div class="stat-value">{{ legality.status }}</div>
+                    <div class="small muted-text">
+                        {% if legality.issues %}{{ legality.issues|length }} issue(s) to address.
+                        {% elif legality.warnings %}{{ legality.warnings|length }} warning(s) to review.
+                        {% else %}No issues reported by supported checks.{% endif %}
+                    </div>
+                </div>
+            </div>
+            <hr class="border-secondary my-3">
+            <p class="mb-0 {{ 'text-success' if ready else 'muted-text' }}">
+                {% if ready %}
+                    Your deck meets the budget, 100-card count, and supported single-commander legality checks.
+                {% elif legality.status == "Illegal" %}
+                    Resolve the legality issues above before considering this deck ready.
+                {% elif legality.status == "Needs review" %}
+                    Review the warnings above and complete the deck before considering it ready.
+                {% elif not card_count_complete %}
+                    Continue building your deck to 100 cards, then review its legality status.
+                {% elif not within_budget %}
+                    Reduce the estimated cost to fit your budget.
+                {% else %}
+                    Review the legality information above before considering this deck ready.
+                {% endif %}
+            </p>
+            <p class="muted-text small mt-2 mb-0">Readiness is based on supported checks and estimated prices; it is not a tournament certification.</p>
+        </section>
+
+        <!-- Part Two Enhancement: Deck Composition Dashboard -->
+        <section class="deck-panel mb-4" aria-labelledby="composition-heading">
+            <h2 id="composition-heading" class="h4 fw-bold mb-2">Deck Composition</h2>
+            <p class="muted-text mb-4">Card counts by primary type, including your Commander and basic lands. Multi-type cards are counted once.</p>
+            {% set composition = legality.composition | default({}) %}
+            {% for type_name, type_count in composition.items() %}
+                {% if type_count > 0 %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>{{ type_name }}</span>
+                            <span class="muted-text">{{ type_count }}</span>
+                        </div>
+                        <div class="progress" role="progressbar" aria-label="{{ type_name }}"
+                             aria-valuenow="{{ type_count }}" aria-valuemin="0"
+                             aria-valuemax="{{ legality.count }}">
+                            <div class="progress-bar"
+                                 style="width: {{ (type_count / legality.count * 100) if legality.count else 0 }}%;"></div>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+            <p class="muted-text small mb-0">Total: {{ legality.count }} cards. Unverified cards are listed separately when Scryfall information is unavailable.</p>
+        </section>
+
         <!-- Deck Contents -->
         <section class="deck-panel">
 
