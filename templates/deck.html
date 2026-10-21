@@ -420,6 +420,8 @@
                                         <a href="{{ url_for('category', category='board_wipe', max_price='5.00') }}" class="composition-category-link" title="Browse board wipes in the Builder (maximum $5 per card)">{{ category_name }} ↗</a>
                                     {% elif category_name == "Protection" %}
                                         <a href="{{ url_for('recommendations', category='protection') }}" class="composition-category-link" title="Find protection recommendations in the Builder">{{ category_name }} ↗</a>
+                                    {% elif category_name == "Win Conditions / Finishers" %}
+                                        <a href="{{ url_for('category', category='finishers', max_price='5.00') }}" class="composition-category-link" title="Browse possible finishers in the Builder (maximum $5 per card)">{{ category_name }} ↗</a>
                                     {% else %}
                                         {{ category_name }}
                                     {% endif %}

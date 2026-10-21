@@ -659,7 +659,12 @@ def category():
         '(o:"hexproof" OR o:"indestructible" '
         'OR o:"protection from")'
     ),
-    "utility_lands": 't:land -t:basic (o:"{T}:" OR o:"Sacrifice")'
+    "utility_lands": 't:land -t:basic (o:"{T}:" OR o:"Sacrifice")',
+    "finishers": (
+        '(o:"you win the game" OR o:"each opponent loses" '
+        'OR o:"damage to each opponent" OR o:"extra combat phase" '
+        'OR o:"creatures you control get +" OR o:"infect")'
+    )
 }
 
     category_query = category_queries.get(selected_category, "")
