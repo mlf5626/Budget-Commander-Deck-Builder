@@ -1,0 +1,116 @@
+/* Budget Commander Deck Builder — Arcane Edition
+   Shared presentation only; no application behavior is changed. */
+:root {
+  color-scheme: dark;
+  --bc-bg:#090d19; --bc-panel:#172137; --bc-panel-top:#202d48;
+  --bc-border:#3d4d6c; --bc-accent:#b49aff; --bc-accent-dark:#7044d8;
+  --bc-text:#f5f6ff; --bc-muted:#c0cce0; --bc-gold:#e8c783;
+}
+html { scroll-behavior:smooth; }
+body {
+  background:
+    radial-gradient(ellipse 65% 40% at 80% -8%,rgba(133,87,235,.23),transparent 75%),
+    radial-gradient(ellipse 45% 35% at -12% 28%,rgba(55,112,178,.13),transparent 75%),
+    var(--bc-bg) !important;
+  color:var(--bc-text); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  line-height:1.55; min-height:100vh;
+}
+body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+ background-image:linear-gradient(rgba(255,255,255,.013) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.013) 1px,transparent 1px);
+ background-size:42px 42px; mask-image:linear-gradient(to bottom,black,transparent 85%); }
+.navbar { position:sticky;top:0;z-index:1030;background:rgba(12,18,34,.95)!important;
+ backdrop-filter:blur(18px);border-bottom:1px solid rgba(180,154,255,.26)!important;
+ box-shadow:0 10px 32px rgba(0,0,0,.35); }
+.navbar .container { min-height:74px;gap:16px; }
+.navbar-brand { font-size:1.08rem;font-weight:800!important;letter-spacing:.01em;white-space:normal;line-height:1.2; }
+.navbar-brand::before { content:"✦";color:var(--bc-gold);margin-right:.6rem; }
+.navbar-brand:hover { color:#dbcaff!important; }
+main.container { max-width:1320px; }
+main.container > .mb-4:first-child { padding:20px 0 8px; }
+h1 {font-size:clamp(2rem,3.8vw,3.1rem);letter-spacing:-.045em;line-height:1.1;}
+h2,h3 {letter-spacing:-.02em;}
+.highlight {color:#c7b0ff!important;}
+.muted-text,.stat-label,.card-type {color:var(--bc-muted)!important;}
+.dashboard-panel,.deck-panel,.filter-panel,.card-panel {
+ background:linear-gradient(150deg,rgba(34,47,76,.98),rgba(19,28,48,.98))!important;
+ border:1px solid var(--bc-border)!important;
+ border-radius:18px!important;
+ box-shadow:0 14px 38px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.035);
+}
+.dashboard-panel {border-top:2px solid rgba(180,154,255,.68)!important;}
+.dashboard-panel,.deck-panel,.filter-panel {padding:26px!important;}
+.filter-panel {margin-bottom:22px;}
+.section-heading {margin-bottom:18px!important;}
+.card-panel {padding:17px!important;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;}
+.card-panel:hover {transform:translateY(-4px);border-color:#8d73d4!important;box-shadow:0 18px 40px rgba(0,0,0,.33);}
+.card-artwork {border-radius:12px;box-shadow:0 8px 22px rgba(0,0,0,.4);}
+.card-title {color:#fff;line-height:1.35;}
+.card-price {color:var(--bc-gold)!important;}
+.stat-label {font-size:.78rem!important;text-transform:uppercase;letter-spacing:.085em;font-weight:700;}
+.stat-value {font-size:clamp(1.3rem,2vw,1.65rem)!important;letter-spacing:-.025em;color:#fff;}
+/* All normal actions share one predictable size. Smaller actions are deliberately compact. */
+.btn,button.btn,a.btn {box-sizing:border-box;display:inline-flex;justify-content:center;align-items:center;
+ gap:.4rem;min-height:44px;min-width:154px;padding:.65rem 1.1rem!important;
+ border-radius:10px!important;font-size:.91rem!important;font-weight:700!important;line-height:1.2;
+ text-align:center;text-decoration:none;transition:transform .16s ease,background-color .16s ease,box-shadow .16s ease;}
+.btn-sm,button.btn-sm,a.btn-sm {min-height:36px;min-width:96px;padding:.42rem .8rem!important;font-size:.83rem!important;}
+.btn-lg,button.btn-lg,a.btn-lg {min-height:48px;min-width:174px;padding:.76rem 1.3rem!important;font-size:.96rem!important;}
+.btn:hover:not(:disabled) {transform:translateY(-1px);}
+.btn-purple,.btn-primary {background:linear-gradient(120deg,#8654eb,#6536c8)!important;border:1px solid #a27bf3!important;color:white!important;box-shadow:0 4px 14px rgba(111,65,212,.2);}
+.btn-purple:hover,.btn-primary:hover {background:linear-gradient(120deg,#9d70f6,#7648df)!important;color:#fff!important;}
+.btn-outline-light,.btn-outline-info {border-color:#8794b4!important;color:#eef0ff!important;background:rgba(255,255,255,.025)!important;}
+.btn-outline-light:hover,.btn-outline-info:hover {background:#354361!important;color:#fff!important;}
+.btn-success {background:#16785f!important;border-color:#279e7e!important;}
+.btn-remove {border:1px solid #d67b8a!important;color:#ffb3bf!important;background:rgba(190,54,75,.08)!important;}
+.btn-remove:hover {background:#a82d48!important;color:#fff!important;}
+.btn-secondary:disabled {background:#35415a!important;border-color:#46536b!important;color:#d0d8e5!important;opacity:.8;}
+.btn:focus-visible,.form-control:focus-visible,.form-select:focus-visible,a:focus-visible {outline:3px solid #dfd1ff!important;outline-offset:3px;box-shadow:none!important;}
+.form-label {color:#e2e7f5;font-size:.9rem;font-weight:650;}
+.form-control,.form-select {min-height:45px;border-radius:10px!important;background-color:#e9edf7!important;color:#18233a!important;border:1px solid #9da9c2!important;}
+.form-control:focus,.form-select:focus {border-color:#a47afa!important;box-shadow:0 0 0 .2rem rgba(155,117,255,.22)!important;}
+.progress {height:12px!important;background:#33415d!important;border-radius:99px!important;overflow:hidden;}
+.progress-bar {background:linear-gradient(90deg,#6e47d5,#c6a5ff)!important;border-radius:99px;}
+.table-responsive {border-radius:12px;}
+.deck-table {--bs-table-bg:transparent;--bs-table-color:#eef2ff;--bs-table-border-color:#41516f;color:#eef2ff;}
+.deck-table thead th {color:#d9c5ff!important;background:rgba(111,77,174,.15)!important;font-size:.78rem;
+ letter-spacing:.055em;text-transform:uppercase;padding:15px 12px!important;white-space:nowrap;}
+.deck-table tbody td {padding:13px 12px!important;vertical-align:middle;}
+.deck-table tbody tr:hover td {background:rgba(180,154,255,.09)!important;}
+.deck-table .commander-row td {background:rgba(117,70,215,.13)!important;}
+.composition-category-link {color:#cbb6ff!important;text-underline-offset:4px;}
+.composition-category-link:hover {color:#fff!important;}
+.badge {border-radius:7px;padding:.45em .7em;font-weight:700;}
+.alert-custom,.empty-state {border-radius:13px;}
+footer {color:#9fadc6!important;opacity:1!important;border-top:1px solid rgba(180,154,255,.12);margin-top:28px;}
+@media(max-width:767px) {
+ .navbar .container {min-height:66px;}
+ .navbar-brand {font-size:.9rem;}
+ .navbar .btn {min-width:0;padding:.5rem .65rem!important;font-size:.78rem!important;}
+ .dashboard-panel,.deck-panel,.filter-panel {padding:19px!important;}
+ .btn-lg {min-width:150px;}
+ .deck-table {font-size:.86rem;}
+ main.container {padding-top:1.5rem!important;}
+}
+@media(prefers-reduced-motion:reduce) {html{scroll-behavior:auto}.btn,.card-panel{transition:none}.btn:hover,.card-panel:hover{transform:none}}
+
+/* Shared styles for Home, Commander/Budget, Saved Decks and Buy Cards */
+.theme-surface,.panel,.search-panel,.feature-card,.info-panel,.budget-panel {
+ background:linear-gradient(150deg,rgba(34,47,76,.98),rgba(19,28,48,.98))!important;
+ border:1px solid var(--bc-border)!important;border-radius:18px!important;
+ box-shadow:0 14px 38px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.035);
+}
+.search-panel,.budget-panel {border-top:2px solid rgba(180,154,255,.68)!important;}
+.feature-card {transition:transform .18s ease,border-color .18s ease;}
+.feature-card:hover {transform:translateY(-3px);border-color:#8d73d4!important;}
+.feature-card h3,.info-label {color:#cbb6ff!important;}
+.info-panel,.budget-panel {padding:30px;}
+.commander-image {box-shadow:0 14px 36px rgba(0,0,0,.48);}
+.hero {padding-top:75px!important;padding-bottom:48px!important;}
+.hero h1 {letter-spacing:-.045em;line-height:1.15;}
+.page-heading {padding-top:54px!important;}
+.input-group-text {background:#d8ddec!important;color:#1d2840!important;border-color:#9da9c2!important;}
+.table:not(.deck-table) {--bs-table-bg:transparent;--bs-table-color:#eef2ff;--bs-table-border-color:#41516f;}
+.table:not(.deck-table) thead th {color:#d9c5ff;}
+.btn-outline-danger {border-color:#d67b8a!important;color:#ffb3bf!important;}
+.btn-outline-danger:hover {background:#a82d48!important;color:#fff!important;}
+@media(max-width:767px) {.hero{padding-top:48px!important}.search-panel,.info-panel,.budget-panel{padding:20px!important}}

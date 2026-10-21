@@ -13,26 +13,34 @@
     .btn-purple {background:#7c3aed;color:white;}
     .btn-purple:hover {background:#6d28d9;color:white;}
   </style>
+    <!-- Shared Arcane theme -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}?v=2">
 </head>
 <body>
+<nav class="navbar navbar-dark">
+  <div class="container">
+    <a class="navbar-brand" href="{{ url_for('home') }}">Budget Commander Deck Builder</a>
+    <a class="btn btn-purple" href="{{ url_for('deck') if true else url_for('home') }}">Back to My Deck</a>
+  </div>
+</nav>
 <main class="container py-5">
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
       <h1 class="h2 fw-bold">Buy Cards</h1>
-      <p class="muted mb-0">{{ commander_name }} — review your list and search TCGplayer.</p>
+      <p class="muted-text mb-0">{{ commander_name }} — review your list and search TCGplayer.</p>
     </div>
     <a href="{{ url_for('deck') }}" class="btn btn-purple">Back to My Deck</a>
   </div>
-  <section class="panel p-4 mb-4">
+  <section class="panel theme-surface p-4 mb-4">
     <h2 class="h5">Estimated deck cost: ${{ '%.2f'|format(estimated_total) }}</h2>
-    <p class="muted mb-1">Budget: ${{ '%.2f'|format(budget) }}</p>
-    <p class="muted small mb-0">Prices are Scryfall estimates, not live TCGplayer offers. Actual condition, printing, availability, shipping, and taxes may change the total. Each link opens TCGplayer search results; purchases are not made inside this app.</p>
+    <p class="muted-text mb-1">Budget: ${{ '%.2f'|format(budget) }}</p>
+    <p class="muted-text small mb-0">Prices are Scryfall estimates, not live TCGplayer offers. Actual condition, printing, availability, shipping, and taxes may change the total. Each link opens TCGplayer search results; purchases are not made inside this app.</p>
     {% if unpriced %}<div class="alert alert-warning mt-3 mb-0">Some cards have unavailable prices and are excluded from this estimate.</div>{% endif %}
   </section>
-  <section class="panel p-4">
+  <section class="panel theme-surface p-4">
     <h2 class="h5 mb-3">Shopping List</h2>
     <div class="table-responsive">
-      <table class="table align-middle">
+      <table class="table deck-table align-middle">
         <thead><tr><th>Card</th><th>Qty</th><th>Est. unit price</th><th>Search</th></tr></thead>
         <tbody>
         {% for card in rows %}

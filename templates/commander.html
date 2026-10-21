@@ -104,6 +104,8 @@
             text-decoration: underline;
         }
     </style>
+    <!-- Shared Arcane theme -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}?v=2">
 </head>
 
 <body>
@@ -135,7 +137,7 @@
 
             <!-- Commander Artwork -->
             <div class="col-lg-5">
-                <div class="info-panel d-flex align-items-center justify-content-center">
+                <div class="info-panel theme-surface d-flex align-items-center justify-content-center">
 
                     {% if commander.image_uris %}
                         <img
@@ -156,7 +158,7 @@
 
             <!-- Commander Information -->
             <div class="col-lg-7">
-                <div class="info-panel">
+                <div class="info-panel theme-surface">
 
                     <h2 class="fw-bold mb-4">
                         {{ commander.name }}
@@ -221,7 +223,7 @@
         </section>
 
         <!-- Budget Selection -->
-        <section class="budget-panel">
+        <section class="budget-panel theme-surface">
 
             <h2 class="h4 fw-bold highlight">
                 Set Your Deck Budget

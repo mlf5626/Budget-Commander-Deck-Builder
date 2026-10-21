@@ -87,6 +87,8 @@
             color: #cbd5e1;
         }
     </style>
+    <!-- Shared Arcane theme -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}?v=2">
 </head>
 
 <body>
@@ -116,7 +118,7 @@
         </section>
 
         <!-- Commander Search -->
-        <section class="search-panel">
+        <section class="search-panel theme-surface">
 
             <h2 class="h4 text-center mb-3">
                 Choose Your Commander
@@ -163,7 +165,7 @@
         <section class="row g-4 mt-5 mb-5">
 
             <div class="col-md-4">
-                <div class="feature-card">
+                <div class="feature-card theme-surface">
                     <h3>Commander Legal</h3>
                     <p class="muted-text mb-0">
                         Find cards that match your Commander's
@@ -173,7 +175,7 @@
             </div>
 
             <div class="col-md-4">
-                <div class="feature-card">
+                <div class="feature-card theme-surface">
                     <h3>Budget Focused</h3>
                     <p class="muted-text mb-0">
                         Set a spending limit and filter cards
@@ -183,7 +185,7 @@
             </div>
 
             <div class="col-md-4">
-                <div class="feature-card">
+                <div class="feature-card theme-surface">
                     <h3>Build Your Deck</h3>
                     <p class="muted-text mb-0">
                         Add and remove cards while tracking

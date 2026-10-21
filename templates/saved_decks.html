@@ -12,8 +12,16 @@
     .btn-purple:hover { background:#6d28d9; color:white; }
     .muted { color:#cbd5e1; }
   </style>
+    <!-- Shared Arcane theme -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}?v=2">
 </head>
 <body>
+<nav class="navbar navbar-dark">
+  <div class="container">
+    <a class="navbar-brand" href="{{ url_for('home') }}">Budget Commander Deck Builder</a>
+    <a class="btn btn-purple" href="{{ url_for('deck') if false else url_for('home') }}">Home</a>
+  </div>
+</nav>
   <main class="container py-5">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
       <h1 class="h2 m-0">Saved Commander Decks</h1>
@@ -23,16 +31,16 @@
       <div class="row g-3">
       {% for saved in decks %}
         <div class="col-md-6">
-          <div class="panel p-4 h-100">
+          <div class="panel theme-surface p-4 h-100">
             <h2 class="h5">{{ saved.commander_name }}</h2>
-            <p class="muted mb-3">{{ saved.card_count }}/100 cards · ${{ '%.2f'|format(saved.budget) }} budget<br>Saved {{ saved.created_at }}</p>
+            <p class="muted-text mb-3">{{ saved.card_count }}/100 cards · ${{ '%.2f'|format(saved.budget) }} budget<br>Saved {{ saved.created_at }}</p>
             <div class="d-flex gap-2 flex-wrap">
               <form action="{{ url_for('load_deck', deck_id=saved.id) }}" method="post">
                 <button type="submit" class="btn btn-purple">Load &amp; Edit</button>
               </form>
               <a href="{{ url_for('export_saved_deck', deck_id=saved.id) }}" class="btn btn-outline-info">Export .txt</a>
               <form action="{{ url_for('delete_deck', deck_id=saved.id) }}" method="post" onsubmit="return confirm('Delete this saved deck permanently?');">
-                <button type="submit" class="btn btn-outline-danger">Delete</button>
+                <button type="submit" class="btn btn-remove">Delete</button>
               </form>
             </div>
           </div>
@@ -40,7 +48,7 @@
       {% endfor %}
       </div>
     {% else %}
-      <div class="panel p-4"><p class="mb-0">No saved decks yet. Build a deck, then select Save Deck.</p></div>
+      <div class="panel theme-surface p-4"><p class="mb-0">No saved decks yet. Build a deck, then select Save Deck.</p></div>
     {% endif %}
   </main>
 </body>
