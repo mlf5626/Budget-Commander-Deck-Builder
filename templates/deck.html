@@ -363,6 +363,71 @@
             <p class="muted-text small mb-0">Total: {{ legality.count }} cards. Unverified cards are listed separately when Scryfall information is unavailable.</p>
         </section>
 
+        <!-- Stage 2: Estimated card-role composition -->
+        <section class="deck-panel mb-4" aria-labelledby="recommended-composition-heading">
+            <h2 id="recommended-composition-heading" class="h4 fw-bold mb-2">Recommended Deck Composition</h2>
+            <p class="muted-text mb-3">
+                Suggested starting ranges for a typical 100-card Commander deck. Adjust them for your Commander and strategy.
+            </p>
+            {% set recommendations = [
+                ("Lands", 35, 38, "Mana base"),
+                ("Ramp / Mana Acceleration", 10, 12, "Mana rocks, land ramp, and mana creatures"),
+                ("Card Draw / Advantage", 8, 12, "Draw spells and repeatable card advantage"),
+                ("Targeted Removal", 8, 10, "Answers to individual threats"),
+                ("Board Wipes", 2, 4, "Mass removal and resets"),
+                ("Protection", 2, 5, "Protect key cards and your board"),
+                ("Win Conditions / Finishers", 2, 4, "Ways to close out the game")
+            ] %}
+            <div class="table-responsive">
+                <table class="table deck-table align-middle mb-2">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Purpose</th>
+                            <th class="text-end">Suggested Count</th>
+                            <th class="text-end">Your Deck</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category_name, minimum, maximum, purpose in recommendations %}
+                            {% if category_name == "Lands" %}
+                                {% set actual = legality.composition.get("Lands", 0) %}
+                            {% else %}
+                                {% set actual = legality.role_counts.get(category_name, 0) %}
+                            {% endif %}
+                            <tr>
+                                <td>{{ category_name }}</td>
+                                <td class="muted-text">{{ purpose }}</td>
+                                <td class="text-end">{{ minimum }}–{{ maximum }}</td>
+                                <td class="text-end">
+                                    <span class="{{ 'text-success' if minimum <= actual <= maximum else 'text-warning' }}">{{ actual }}</span>
+                                </td>
+                                <td>
+                                    {% if actual < minimum %}
+                                        <span class="text-warning">Needs {{ minimum - actual }} more</span>
+                                    {% elif actual > maximum %}
+                                        <span class="text-warning">{{ actual - maximum }} above suggested range</span>
+                                    {% else %}
+                                        <span class="text-success">Within suggested range</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="muted-text small mb-1">
+                Role counts are estimates based on Scryfall card rules text, not guaranteed classifications. Some cards serve multiple roles or may be missed.
+            </p>
+            {% if legality.unverified_role_cards %}
+                <p class="text-warning small mb-1">{{ legality.unverified_role_cards }} card(s) could not be verified; role counts may be incomplete.</p>
+            {% endif %}
+            <p class="muted-text small mb-0">
+                Categories overlap: a card can provide ramp, draw, and synergy at the same time. These suggested ranges do not add up to 100; remaining slots support your deck's strategy. Counts are guidelines, not legality requirements.
+            </p>
+        </section>
+
         <!-- Deck Contents -->
         <section class="deck-panel">
 

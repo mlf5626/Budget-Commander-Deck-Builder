@@ -2,6 +2,7 @@
 from collections import Counter
 from functools import lru_cache
 import requests
+import re
 
 HEADERS = {"User-Agent": "BudgetCommanderDeckBuilder/1.0", "Accept": "application/json"}
 BASIC_LANDS = {"Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes"}
@@ -30,9 +31,57 @@ def lookup_card(name):
     except (requests.RequestException, ValueError, KeyError, TypeError):
         return None
 
+
+# Heuristic roles: useful guidance, not definitive card classification.
+ROLE_KEYS = (
+    "Ramp / Mana Acceleration", "Card Draw / Advantage", "Targeted Removal",
+    "Board Wipes", "Protection", "Win Conditions / Finishers",
+)
+
+
+def classify_card_roles(card):
+    """Estimate functional roles from Scryfall Oracle text; roles may overlap."""
+    if not card:
+        return set()
+    text = card.get("oracle_text", "").lower()
+    typ = card.get("type_line", "").lower()
+    keywords = {str(k).lower() for k in card.get("keywords", [])}
+    roles = set()
+
+    # Mana production on nonlands, mana acceleration, and putting lands onto the battlefield.
+    mana_ability = bool(re.search(r"(?:\{t\}|tap an untapped|remove a .*counter).*?add \{[wubrgc]\}", text, re.S))
+    mana_rock = "land" not in typ and mana_ability
+    extra_mana = bool(re.search(r"add (?:an additional|\{[0-9wubrgc]\}\{[0-9wubrgc]\})", text))
+    land_ramp = bool(re.search(r"(?:search your library for|put) .*?land card.*?(?:onto the battlefield|onto the battlefield tapped)", text, re.S))
+    if mana_rock or extra_mana or land_ramp or "treasure token" in text and "create" in text:
+        roles.add("Ramp / Mana Acceleration")
+
+    if (re.search(r"draw (?:a|one|two|three|four|[0-9]+|x) cards?", text)
+            or "draw cards equal to" in text or "whenever you draw" in text
+            or "look at the top" in text and "put" in text and "hand" in text):
+        roles.add("Card Draw / Advantage")
+
+    wipe = bool(re.search(r"(?:destroy|exile|return) (?:all|each) (?:creatures?|artifacts?|enchantments?|nonland permanents?|permanents?)", text))
+    if wipe or "each creature gets -" in text or "all creatures get -" in text:
+        roles.add("Board Wipes")
+    elif re.search(r"(?:destroy|exile|return) target (?:creature|artifact|enchantment|permanent|nonland permanent|planeswalker)", text) or "counter target spell" in text:
+        roles.add("Targeted Removal")
+
+    if ("hexproof" in text or "indestructible" in text or "phase out" in text
+            or "protection from" in text or "ward" in keywords
+            or "can't be the target" in text):
+        roles.add("Protection")
+
+    if ("you win the game" in text or "target player loses the game" in text
+            or "each opponent loses the game" in text):
+        roles.add("Win Conditions / Finishers")
+    return roles
+
 def validate_deck(commander_name, deck, basic_lands):
     """Return a conservative legality assessment; never claim legal if verification fails."""
     count = 1 + len(deck) + sum(basic_lands.values())
+    role_counts = {key: 0 for key in ROLE_KEYS}
+    unverified_role_cards = 0
     issues = []
     warnings = []
     composition = {key: 0 for key in (
@@ -59,6 +108,11 @@ def validate_deck(commander_name, deck, basic_lands):
 
     commander = lookup_card(commander_name) if commander_name else None
     count_card_type(commander)
+    if commander:
+        for role in classify_card_roles(commander):
+            role_counts[role] += 1
+    else:
+        unverified_role_cards += 1
     if not commander:
         warnings.append("Commander information could not be verified with Scryfall.")
     else:
@@ -89,8 +143,11 @@ def validate_deck(commander_name, deck, basic_lands):
         card = lookup_card(name)
         count_card_type(card, frequencies[name.casefold()])
         if card is None:
+            unverified_role_cards += frequencies[name.casefold()]
             warnings.append(f"Could not verify card: {name}.")
             continue
+        for role in classify_card_roles(card):
+            role_counts[role] += frequencies[name.casefold()]
         if not card["legal"]:
             issues.append(f"{name} is not legal in Commander.")
         if colors is not None and not set(card["color_identity"]).issubset(colors):
@@ -116,4 +173,5 @@ def validate_deck(commander_name, deck, basic_lands):
         status = "Legal"
     return {"status": status, "issues": list(dict.fromkeys(issues)),
             "warnings": list(dict.fromkeys(warnings)), "remaining": max(0, 100 - count),
-            "count": count, "composition": composition}
+            "count": count, "composition": composition,
+            "role_counts": role_counts, "unverified_role_cards": unverified_role_cards}
