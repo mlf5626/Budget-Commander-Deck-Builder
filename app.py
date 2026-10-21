@@ -4,7 +4,7 @@ from functools import lru_cache
 import sqlite3
 from urllib.parse import quote
 import re
-from legality import validate_deck
+from legality import validate_deck, lookup_card
 from recommendations import fetch_recommendations, CATEGORIES
 from database import (
     init_db, save_deck, list_saved_decks, load_saved_deck,
@@ -343,6 +343,15 @@ def deck():
 
     legality = validate_deck(commander_name, deck, basic_lands)
 
+    # Reuse the card data already retrieved for legality/composition checks.
+    # This also supports previously saved decks without changing the database.
+    commander_details = lookup_card(commander_name) if commander_name else None
+    deck_details = {}
+    for card in deck:
+        name = card.get("name", "")
+        if name and name not in deck_details:
+            deck_details[name] = lookup_card(name)
+
     return render_template(
         "deck.html",
         commander_name=commander_name,
@@ -356,7 +365,9 @@ def deck():
         basic_land_prices=basic_land_prices,
         message=message,
         saved_deck_id=session.get("saved_deck_id"),
-        legality=legality
+        legality=legality,
+        commander_details=commander_details,
+        deck_details=deck_details
     )
 
 @app.route("/continue-building")

@@ -22,6 +22,7 @@ def lookup_card(name):
             "color_identity": card.get("color_identity", []),
             "legal": card.get("legalities", {}).get("commander") == "legal",
             "type_line": card.get("type_line", ""),
+            "mana_cost": card.get("mana_cost") or " // ".join(face.get("mana_cost", "") for face in card.get("card_faces", []) if face.get("mana_cost")),
             "oracle_text": card.get("oracle_text", ""),
             "keywords": card.get("keywords", []),
             "layout": card.get("layout", ""),

@@ -23,6 +23,9 @@
         .navbar {
             background-color: #172238;
             border-bottom: 1px solid #334155;
+            position: sticky;
+            top: 0;
+            z-index: 1030;
         }
 
         .navbar-brand {
@@ -130,6 +133,10 @@
             padding: 40px 20px;
             text-align: center;
         }
+        /* Scryfall mana symbols in the deck table */
+        .mana-cost { display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; min-width: 55px; }
+        .mana-symbol { width: 19px; height: 19px; display: inline-block; vertical-align: middle; }
+        .mana-unknown { color: #cbd5e1; font-size: 0.85rem; }
     </style>
 </head>
 
@@ -375,7 +382,8 @@
                     <thead>
                         <tr>
                             <th>Card Name</th>
-                            <th>Role</th>
+                            <th>Card Type</th>
+                            <th>Mana Cost</th>
                             <th class="text-end">Price</th>
                             <th class="text-end">Action</th>
                         </tr>
@@ -385,130 +393,52 @@
 
                         <!-- Commander -->
                         <tr class="commander-row">
-                            <td>
-                                <strong>{{ commander_name }}</strong>
-                            </td>
-
-                            <td>
-                                <span class="badge badge-commander">
-                                    Commander
-                                </span>
-                            </td>
-
-                            <td class="text-end">
-                                ${{ "%.2f"|format(commander_price) }}
-                            </td>
-
-                            <td class="text-end">
-                                <span class="muted-text">Required</span>
-                            </td>
+                            <td><strong>{{ commander_name }}</strong> <span class="badge badge-commander">Commander</span></td>
+                            <td>{{ commander_details.type_line if commander_details and commander_details.type_line else "Unavailable" }}</td>
+                            <td><span class="mana-cost" data-mana-cost="{{ commander_details.mana_cost if commander_details and commander_details.mana_cost else '' }}">—</span></td>
+                            <td class="text-end">${{ "%.2f"|format(commander_price) }}</td>
+                            <td class="text-end"><span class="muted-text">Required</span></td>
                         </tr>
 
                         <!-- Added Cards -->
                         {% for card in deck %}
-
-                            <tr>
-                                <td>
-                                    {{ card.name }}
-                                </td>
-
-                                <td>
-                                    <span class="muted-text">
-                                        Deck Card
-                                    </span>
-                                </td>
-
-                                <td class="text-end">
-                                    ${{ "%.2f"|format(card.price) }}
-                                </td>
-
-                                <td class="text-end">
-                                    <form
-                                        action="/remove-card"
-                                        method="POST"
-                                        class="mb-0"
-                                    >
-                                        <input
-                                            type="hidden"
-                                            name="card_name"
-                                            value="{{ card.name }}"
-                                        >
-
-                                        <button
-                                            type="submit"
-                                            class="btn btn-remove btn-sm"
-                                        >
-                                            Remove
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-
+                        {% set details = deck_details.get(card.name) %}
+                        <tr>
+                            <td>{{ card.name }}</td>
+                            <td>{{ details.type_line if details and details.type_line else "Unavailable" }}</td>
+                            <td><span class="mana-cost" data-mana-cost="{{ details.mana_cost if details and details.mana_cost else '' }}">—</span></td>
+                            <td class="text-end">${{ "%.2f"|format(card.price) }}</td>
+                            <td class="text-end">
+                                <form action="/remove-card" method="POST" class="mb-0">
+                                    <input type="hidden" name="card_name" value="{{ card.name }}">
+                                    <button type="submit" class="btn btn-remove btn-sm">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
                         {% endfor %}
                         
 <!-- Basic Lands -->
-{% for land_name, quantity in basic_lands.items() %}
-
-    <tr>
-        <td>
-            {{ land_name }}
-        </td>
-
-        <td>
-            <span class="badge bg-secondary">
-                Basic Land × {{ quantity }}
-            </span>
-        </td>
-
-        <td class="text-end">
-            {% if land_name in basic_land_prices %}
-        ${{ "%.2f"|format(basic_land_prices[land_name] * quantity) }}
-    {% else %}
-        <span class="muted-text">Price unavailable</span>
-    {% endif %}
-        </td>
-
-        
-<td class="text-end">
-
-    <form
-        action="/remove-basic-land"
-        method="POST"
-        class="d-flex justify-content-end align-items-center gap-2 mb-0"
-    >
-
-        <input
-            type="hidden"
-            name="land_name"
-            value="{{ land_name }}"
-        >
-
-        <input
-            type="number"
-            name="quantity"
-            min="1"
-            max="{{ quantity }}"
-            value="1"
-            class="form-control form-control-sm"
-            style="width: 75px;"
-            aria-label="Quantity of {{ land_name }} to remove"
-            required
-        >
-
-        <button
-            type="submit"
-            class="btn btn-remove btn-sm"
-        >
-            Remove
-        </button>
-
-    </form>
-
-</td>
-
-    </tr>
-
-{% endfor %}
+                        {% for land_name, quantity in basic_lands.items() %}
+                        <tr>
+                            <td>{{ land_name }} <span class="badge bg-secondary">× {{ quantity }}</span></td>
+                            <td>Basic Land</td>
+                            <td><span class="muted-text">—</span></td>
+                            <td class="text-end">
+                                {% if land_name in basic_land_prices %}
+                                    ${{ "%.2f"|format(basic_land_prices[land_name] * quantity) }}
+                                {% else %}
+                                    <span class="muted-text">Price unavailable</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <form action="/remove-basic-land" method="POST" class="d-flex justify-content-end align-items-center gap-2 mb-0">
+                                    <input type="hidden" name="land_name" value="{{ land_name }}">
+                                    <input type="number" name="quantity" min="1" max="{{ quantity }}" value="1" class="form-control form-control-sm" style="width: 75px;" aria-label="Quantity of {{ land_name }} to remove" required>
+                                    <button type="submit" class="btn btn-remove btn-sm">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
 
 
                     </tbody>
@@ -577,5 +507,39 @@
         IST 440W Capstone Project
     </footer>
 
+    <script>
+        // Convert Scryfall mana-cost notation into recognizable mana icons.
+        // Example: {2}{G}{U} -> 2, green, blue icons.
+        document.querySelectorAll('[data-mana-cost]').forEach(function (container) {
+            const cost = container.dataset.manaCost || '';
+            const symbols = [...cost.matchAll(/\{([^{}]+)\}/g)].map(match => match[1]);
+            if (!symbols.length) return; // Lands and missing costs keep their dash.
+            container.textContent = '';
+            symbols.forEach(function (symbol) {
+                // Scryfall's SVG names use P for Phyrexian and slash-separated hybrid costs.
+                // Restrict to known safe characters before using a symbol in a URL.
+                if (!/^[0-9WUBRGCSPXYZTQEP/∞]+$/i.test(symbol)) {
+                    const fallback = document.createElement('span');
+                    fallback.className = 'mana-unknown';
+                    fallback.textContent = '{' + symbol + '}';
+                    container.appendChild(fallback);
+                    return;
+                }
+                const img = document.createElement('img');
+                img.className = 'mana-symbol';
+                img.src = 'https://svgs.scryfall.io/card-symbols/' + encodeURIComponent(symbol.toUpperCase()) + '.svg';
+                img.alt = '{' + symbol + '}';
+                img.title = '{' + symbol + '}';
+                img.loading = 'lazy';
+                img.onerror = function () {
+                    const fallback = document.createElement('span');
+                    fallback.className = 'mana-unknown';
+                    fallback.textContent = '{' + symbol + '}';
+                    img.replaceWith(fallback);
+                };
+                container.appendChild(img);
+            });
+        });
+    </script>
 </body>
 </html>
