@@ -658,7 +658,8 @@ def category():
     "protection": (
         '(o:"hexproof" OR o:"indestructible" '
         'OR o:"protection from")'
-    )
+    ),
+    "utility_lands": 't:land -t:basic (o:"{T}:" OR o:"Sacrifice")'
 }
 
     category_query = category_queries.get(selected_category, "")
@@ -666,7 +667,7 @@ def category():
     search_query = (
     f"legal:commander "
     f"id<={color_identity} "
-    f"-t:land "
+    f"{'-t:land' if selected_category != 'utility_lands' else ''} "
     f"game:paper "
     f"usd<={max_price_value} "
     f"{category_query}"

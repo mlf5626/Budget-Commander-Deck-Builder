@@ -137,6 +137,16 @@
         .mana-cost { display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; min-width: 55px; }
         .mana-symbol { width: 19px; height: 19px; display: inline-block; vertical-align: middle; }
         .mana-unknown { color: #cbd5e1; font-size: 0.85rem; }
+        .composition-category-link {
+            color: #c4b5fd;
+            font-weight: 600;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .composition-category-link:hover,
+        .composition-category-link:focus-visible {
+            color: #ffffff;
+        }
     </style>
 </head>
 
@@ -397,7 +407,23 @@
                                 {% set actual = legality.role_counts.get(category_name, 0) %}
                             {% endif %}
                             <tr>
-                                <td>{{ category_name }}</td>
+                                <td>
+                                    {% if category_name == "Lands" %}
+                                        <a href="{{ url_for('category', category='utility_lands', max_price='5.00') }}" class="composition-category-link" title="Browse nonbasic utility lands in the Builder (maximum $5 per card)">{{ category_name }} ↗</a>
+                                    {% elif category_name == "Ramp / Mana Acceleration" %}
+                                        <a href="{{ url_for('recommendations', category='ramp') }}" class="composition-category-link" title="Find ramp recommendations in the Builder">{{ category_name }} ↗</a>
+                                    {% elif category_name == "Card Draw / Advantage" %}
+                                        <a href="{{ url_for('recommendations', category='draw') }}" class="composition-category-link" title="Find card draw recommendations in the Builder">{{ category_name }} ↗</a>
+                                    {% elif category_name == "Targeted Removal" %}
+                                        <a href="{{ url_for('recommendations', category='removal') }}" class="composition-category-link" title="Find removal recommendations in the Builder">{{ category_name }} ↗</a>
+                                    {% elif category_name == "Board Wipes" %}
+                                        <a href="{{ url_for('category', category='board_wipe', max_price='5.00') }}" class="composition-category-link" title="Browse board wipes in the Builder (maximum $5 per card)">{{ category_name }} ↗</a>
+                                    {% elif category_name == "Protection" %}
+                                        <a href="{{ url_for('recommendations', category='protection') }}" class="composition-category-link" title="Find protection recommendations in the Builder">{{ category_name }} ↗</a>
+                                    {% else %}
+                                        {{ category_name }}
+                                    {% endif %}
+                                </td>
                                 <td class="muted-text">{{ purpose }}</td>
                                 <td class="text-end">{{ minimum }}–{{ maximum }}</td>
                                 <td class="text-end">
