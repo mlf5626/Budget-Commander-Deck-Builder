@@ -4,6 +4,7 @@ from functools import lru_cache
 import sqlite3
 from urllib.parse import quote
 import re
+import math
 from legality import validate_deck, lookup_card
 from recommendations import fetch_recommendations, CATEGORIES
 from database import (
@@ -59,45 +60,65 @@ def home():
 
 @app.route("/search", methods=["POST"])
 def search():
-    commander_name = request.form.get("commander")
-
-    url = "https://api.scryfall.com/cards/named"
-    params = {"fuzzy": commander_name}
+    commander_name = (request.form.get("commander") or "").strip()
+    if not commander_name:
+        return render_template("commander_error.html",
+                               message="Please enter a Commander name."), 400
 
     headers = {
         "User-Agent": "BudgetCommanderDeckBuilder/1.0",
         "Accept": "application/json"
     }
-
-    response = requests.get(
-        url,
-        params=params,
-        headers=headers,
-        timeout=10
-    )
-
-    print("Scryfall URL:", response.url)
-    print("Scryfall Status:", response.status_code)
-    print("Scryfall Response:", response.text)
-
-    if response.status_code == 200:
-        commander = response.json()
-
-        commander_price = commander["prices"].get("usd")
-
-        if commander_price:
-            commander_price = float(commander_price)
-        else:
-            commander_price = 0.00
-
-        session["commander_price"] = commander_price
-
-        return render_template(
-            "commander.html",
-            commander=commander
+    try:
+        response = requests.get(
+            "https://api.scryfall.com/cards/named",
+            params={"fuzzy": commander_name},
+            headers=headers,
+            timeout=10
         )
+        if response.status_code in (404, 422):
+            return render_template("commander_error.html",
+                                   message="Commander not found. Check the spelling and try again."), 404
+        response.raise_for_status()
+        commander = response.json()
+        commander_price = commander.get("prices", {}).get("usd")
+        session["commander_price"] = float(commander_price) if commander_price else 0.0
+        session["selected_commander_name"] = commander.get("name", commander_name)
+        return render_template("commander.html", commander=commander)
+    except requests.Timeout:
+        message = "Scryfall took too long to respond. Please try again."
+    except (requests.RequestException, ValueError, TypeError, KeyError):
+        message = "Unable to contact Scryfall right now. Please try again shortly."
+    return render_template("commander_error.html", message=message), 503
 
-    return "Commander not found."
+
+@app.route("/commander-selection")
+def commander_selection():
+    """Return to the last verified Commander without typing its name again."""
+    commander_name = session.get("selected_commander_name")
+    if not commander_name:
+        return redirect(url_for("home"))
+    try:
+        response = requests.get(
+            "https://api.scryfall.com/cards/named",
+            params={"exact": commander_name},
+            headers={"User-Agent": "BudgetCommanderDeckBuilder/1.0", "Accept": "application/json"},
+            timeout=10
+        )
+        response.raise_for_status()
+        commander = response.json()
+        price = commander.get("prices", {}).get("usd")
+        session["commander_price"] = float(price) if price else 0.0
+        return render_template("commander.html", commander=commander)
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        return render_template(
+            "commander_error.html",
+            title="Commander Temporarily Unavailable",
+            message="Unable to reload your Commander from Scryfall. Please try again shortly.",
+            return_url=url_for("commander_selection"),
+            return_label="Try Loading Commander Again"
+        ), 503
+
 
 @app.route("/build", methods=["POST"])
 def build():
@@ -106,21 +127,32 @@ def build():
     commander_price = float(
         session.get("commander_price", 0)
     )
+    error_message = None
     try:
         budget_value = float(budget)
     except (TypeError, ValueError):
-        return "Please enter a valid deck budget."
+        error_message = "Please enter a valid deck budget."
+    else:
+        if not math.isfinite(budget_value):
+            error_message = "Please enter a finite dollar amount for your budget."
+        elif budget_value <= 0:
+            error_message = "Deck budget must be greater than $0."
+        elif commander_price > budget_value:
+            error_message = (
+                f"Your Commander costs ${commander_price:.2f}, "
+                f"which exceeds your ${budget_value:.2f} budget. "
+                "Please choose a higher budget."
+            )
 
-    if budget_value <= 0:
-        return "Deck budget must be greater than $0."
+    if error_message:
+        return render_template(
+            "commander_error.html",
+            title="Deck Budget Unsuccessful",
+            message=error_message,
+            return_url=url_for("commander_selection"),
+            return_label="Return to Commander Budget"
+        ), 400
 
-    if commander_price > budget_value:
-        return (
-            f"Your Commander costs ${commander_price:.2f}, "
-            f"which exceeds your ${budget_value:.2f} budget. "
-            "Please go back and choose a higher budget."
-        )
-    
     session["commander_name"] = commander_name
     session["budget"] = budget
     session["deck"] = []
@@ -196,16 +228,73 @@ def build():
 
 @app.route("/add-card", methods=["POST"])
 def add_card():
-    card_name = request.form.get("card_name")
-    card_price = request.form.get("card_price")
-
+    card_name = (request.form.get("card_name") or "").strip()
+    commander_name = session.get("commander_name")
     deck = session.get("deck", [])
-    budget = float(session.get("budget", 0))
 
-    try:
-        price = float(card_price)
-    except (TypeError, ValueError):
+    if not commander_name:
+        return redirect(url_for("home"))
+    if not card_name:
+        session["message"] = "Please select a valid card."
         return redirect(url_for("deck"))
+
+    # SECURITY (Week 9 Test 3B): Never trust the card name, legality,
+    # color identity or price supplied by the browser.
+    headers = {
+        "User-Agent": "BudgetCommanderDeckBuilder/1.0",
+        "Accept": "application/json",
+    }
+    try:
+        commander_response = requests.get(
+            "https://api.scryfall.com/cards/named",
+            params={"exact": commander_name}, headers=headers, timeout=10,
+        )
+        commander_response.raise_for_status()
+        commander_data = commander_response.json()
+        card_response = requests.get(
+            "https://api.scryfall.com/cards/named",
+            params={"exact": card_name}, headers=headers, timeout=10,
+        )
+        card_response.raise_for_status()
+        card_data = card_response.json()
+    except (requests.RequestException, ValueError, TypeError):
+        session["message"] = (
+            "Unable to verify the card with Scryfall. No card was added; please try again."
+        )
+        return redirect(url_for("deck"))
+
+    verified_name = card_data.get("name", "")
+    if not verified_name or card_data.get("legalities", {}).get("commander") != "legal":
+        session["message"] = "That card is not legal in Commander. No card was added."
+        return redirect(url_for("deck"))
+
+    allowed_colors = set(commander_data.get("color_identity", []))
+    card_colors = set(card_data.get("color_identity", []))
+    if not card_colors.issubset(allowed_colors):
+        session["message"] = (
+            f"{verified_name} is outside your Commander's color identity. No card was added."
+        )
+        return redirect(url_for("deck"))
+
+    if verified_name.casefold() == commander_name.casefold():
+        session["message"] = "Your Commander is already included in the deck."
+        return redirect(url_for("deck"))
+
+    # The Scryfall USD price is the authoritative estimate for this action.
+    # If no price is available, fail closed instead of trusting a form value.
+    from math import isfinite
+    try:
+        price = float(card_data.get("prices", {}).get("usd"))
+        if not isfinite(price) or price < 0:
+            raise ValueError("Invalid price")
+    except (ValueError, TypeError, AttributeError):
+        session["message"] = (
+            f"A verified USD price is unavailable for {verified_name}. No card was added."
+        )
+        return redirect(url_for("deck"))
+
+    card_name = verified_name
+    budget = float(session.get("budget", 0))
 
     # Prevent duplicate cards
     for existing_card in deck:
@@ -985,7 +1074,7 @@ def saved_decks():
 def load_deck(deck_id):
     saved = load_saved_deck(deck_id)
     if saved is None:
-        return "Saved deck not found.", 404
+        return render_template("not_found.html", title="Saved Deck Not Found", message="The requested saved deck could not be found. It may have been deleted or the link may be incorrect.", return_url=url_for("saved_decks"), return_label="Return to Saved Decks"), 404
     session["commander_name"] = saved["commander_name"]
     session["commander_price"] = saved["commander_price"]
     session["budget"] = saved["budget"]
@@ -999,7 +1088,7 @@ def load_deck(deck_id):
 @app.route("/delete-deck/<int:deck_id>", methods=["POST"])
 def delete_deck(deck_id):
     if not delete_saved_deck(deck_id):
-        return "Saved deck not found.", 404
+        return render_template("not_found.html", title="Saved Deck Not Found", message="The requested saved deck could not be found. It may have been deleted or the link may be incorrect.", return_url=url_for("saved_decks"), return_label="Return to Saved Decks"), 404
     if session.get("saved_deck_id") == deck_id:
         session.pop("saved_deck_id", None)
     return redirect(url_for("saved_decks"))
@@ -1043,7 +1132,7 @@ def export_deck():
 def export_saved_deck(deck_id):
     saved = load_saved_deck(deck_id)
     if saved is None:
-        return "Saved deck not found.", 404
+        return render_template("not_found.html", title="Saved Deck Not Found", message="The requested saved deck could not be found. It may have been deleted or the link may be incorrect.", return_url=url_for("saved_decks"), return_label="Return to Saved Decks"), 404
     return deck_download_response(
         saved["commander_name"], saved["deck"], saved["basic_lands"]
     )
@@ -1071,6 +1160,18 @@ def buy_cards():
         estimated_total=total, budget=float(session.get("budget", 0)),
         unpriced=any(row["unit_price"] is None for row in rows)
     )
+
+@app.errorhandler(404)
+def page_not_found(error):
+    """Display a consistent error page while preserving HTTP 404."""
+    return render_template(
+        "not_found.html",
+        title="Page Not Found",
+        message="The page you requested does not exist. Please check the URL or return to the homepage.",
+        return_url=url_for("home"),
+        return_label="Return to Homepage",
+    ), 404
+
 
 if __name__ == "__main__":
     app.run(debug=True)
