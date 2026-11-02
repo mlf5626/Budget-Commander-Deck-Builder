@@ -229,6 +229,7 @@ def build():
 @app.route("/add-card", methods=["POST"])
 def add_card():
     card_name = (request.form.get("card_name") or "").strip()
+    printing_id = (request.form.get("card_id") or "").strip()
     commander_name = session.get("commander_name")
     deck = session.get("deck", [])
 
@@ -251,10 +252,21 @@ def add_card():
         )
         commander_response.raise_for_status()
         commander_data = commander_response.json()
-        card_response = requests.get(
-            "https://api.scryfall.com/cards/named",
-            params={"exact": card_name}, headers=headers, timeout=10,
-        )
+        # Prefer the exact printing shown in the Builder. Never trust its submitted price.
+        # Invalid printing identifiers are rejected rather than silently changing printings.
+        if printing_id:
+            if not re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", printing_id):
+                session["message"] = "Invalid card printing. No card was added."
+                return redirect(url_for("deck"))
+            card_response = requests.get(
+                f"https://api.scryfall.com/cards/{printing_id}",
+                headers=headers, timeout=10,
+            )
+        else:
+            card_response = requests.get(
+                "https://api.scryfall.com/cards/named",
+                params={"exact": card_name}, headers=headers, timeout=10,
+            )
         card_response.raise_for_status()
         card_data = card_response.json()
     except (requests.RequestException, ValueError, TypeError):
@@ -264,6 +276,10 @@ def add_card():
         return redirect(url_for("deck"))
 
     verified_name = card_data.get("name", "")
+    if printing_id and (card_data.get("id", "").casefold() != printing_id.casefold()
+                        or verified_name.casefold() != card_name.casefold()):
+        session["message"] = "The selected card printing could not be verified. No card was added."
+        return redirect(url_for("deck"))
     if not verified_name or card_data.get("legalities", {}).get("commander") != "legal":
         session["message"] = "That card is not legal in Commander. No card was added."
         return redirect(url_for("deck"))
@@ -390,6 +406,41 @@ def remove_card():
 
     return redirect(url_for("deck"))
 
+
+
+def analyze_deck_advisor(legality, deck_size, deck_cost, budget):
+    """Rule-based suggestions from existing deck checks; never changes the deck."""
+    composition = legality.get("composition") or {}
+    roles = legality.get("role_counts") or {}
+    targets = [
+        ("Lands", 35, "utility_lands", "A reliable mana base helps you cast spells consistently."),
+        ("Ramp / Mana Acceleration", 10, "ramp", "More ramp can help you play your Commander and larger spells sooner."),
+        ("Card Draw / Advantage", 8, "draw", "Card draw helps keep options available later in the game."),
+        ("Targeted Removal", 8, "removal", "Removal helps answer opposing threats."),
+        ("Board Wipes", 2, "board_wipe", "Board wipes can help recover when opponents build stronger boards."),
+        ("Protection", 2, "protection", "Protection can help keep important cards on the battlefield."),
+        ("Win Conditions / Finishers", 2, "finishers", "Finishers give the deck ways to close out games."),
+    ]
+    suggestions = []
+    for label, target, category, reason in targets:
+        actual = composition.get("Lands", 0) if label == "Lands" else roles.get(label, 0)
+        if actual < target:
+            suggestions.append({
+                "label": label, "actual": actual, "target": target,
+                "missing": target - actual, "category": category, "reason": reason
+            })
+    # Rank by share of recommended minimum missing, then absolute shortfall.
+    suggestions.sort(key=lambda item: (item["missing"] / item["target"], item["missing"]), reverse=True)
+    return {
+        "suggestions": suggestions[:3],
+        "needs_more_cards": max(0, 100 - deck_size),
+        "remaining_budget": budget - deck_cost,
+        "over_budget": deck_cost > budget,
+        "legality_status": legality.get("status", "Needs review"),
+        "unverified": legality.get("unverified_role_cards", 0),
+        "complete": deck_size == 100,
+    }
+
 @app.route("/deck")
 def deck():
     deck = session.get("deck", [])
@@ -441,6 +492,8 @@ def deck():
         if name and name not in deck_details:
             deck_details[name] = lookup_card(name)
 
+    advisor = analyze_deck_advisor(legality, deck_size, deck_cost, budget)
+
     return render_template(
         "deck.html",
         commander_name=commander_name,
@@ -456,7 +509,8 @@ def deck():
         saved_deck_id=session.get("saved_deck_id"),
         legality=legality,
         commander_details=commander_details,
-        deck_details=deck_details
+        deck_details=deck_details,
+        advisor=advisor
     )
 
 @app.route("/continue-building")

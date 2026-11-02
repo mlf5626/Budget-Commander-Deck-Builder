@@ -529,6 +529,16 @@
                                     class="card-artwork"
                                     loading="lazy"
                                 >
+                            {% elif card.id %}
+                                <img
+                                    src="https://api.scryfall.com/cards/{{ card.id }}?format=image&amp;version=normal"
+                                    alt="Artwork for {{ card.name }}"
+                                    class="card-artwork"
+                                    loading="lazy"
+                                    referrerpolicy="no-referrer"
+                                >
+                            {% else %}
+                                <div class="muted-text small mb-3">Card artwork unavailable</div>
                             {% endif %}
 
                             <h3 class="card-title">
@@ -599,6 +609,8 @@
                                             name="card_name"
                                             value="{{ card.name }}"
                                         >
+
+                                        <input type="hidden" name="card_id" value="{{ card.id }}">
 
                                         <input
                                             type="hidden"

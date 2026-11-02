@@ -458,6 +458,56 @@
             </p>
         </section>
 
+
+        <!-- Rule-based Active Deck Advisor: suggestions only, no deck mutations -->
+        <section class="deck-panel mb-4" aria-labelledby="advisor-heading">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <h2 id="advisor-heading" class="h4 fw-bold mb-0">Active Deck Advisor</h2>
+                <span class="badge bg-primary">Updated with your deck</span>
+            </div>
+            <p class="muted-text">This advisor reviews your current deck whenever you open this page. It suggests what to work on next, but does not change your cards.</p>
+            {% if advisor.legality_status == "Illegal" %}
+                <div class="alert alert-danger">Priority: resolve the Commander legality issues shown above before adding more cards.</div>
+            {% elif advisor.legality_status == "Needs review" %}
+                <div class="alert alert-warning">Some legality checks need review. Suggestions below are not a legality guarantee.</div>
+            {% endif %}
+            {% if advisor.over_budget %}
+                <div class="alert alert-warning">Your estimated deck cost exceeds the budget. Consider lower-cost replacements.</div>
+            {% else %}
+                <p class="mb-2"><strong>Remaining budget:</strong> ${{ "%.2f"|format(advisor.remaining_budget) }}</p>
+            {% endif %}
+            {% if advisor.needs_more_cards %}
+                <p class="muted-text mb-3">You still need {{ advisor.needs_more_cards }} card(s) to reach 100. These are suggested targets for a finished deck, not requirements for a partial deck.</p>
+            {% else %}
+                <p class="muted-text mb-3">Your deck has 100 cards. Review the priorities below for possible swaps.</p>
+            {% endif %}
+            {% if advisor.unverified %}
+                <p class="text-warning small">{{ advisor.unverified }} card(s) could not be classified, so these suggestions may be incomplete.</p>
+            {% endif %}
+            {% if advisor.suggestions %}
+                <h3 class="h6 fw-bold">Top areas to improve</h3>
+                <div class="row g-3">
+                    {% for item in advisor.suggestions %}
+                    <div class="col-md-4">
+                        <div class="p-3 rounded h-100" style="background-color:#172238;border:1px solid #475569;">
+                            <h4 class="h6 fw-bold">{{ loop.index }}. {{ item.label }}</h4>
+                            <p class="mb-2">{{ item.actual }} / {{ item.target }} suggested minimum</p>
+                            <p class="muted-text small">{{ item.reason }}</p>
+                            {% if item.category in ('utility_lands', 'board_wipe', 'finishers') %}
+                                <a class="btn btn-outline-light btn-sm" href="{{ url_for('category', category=item.category, max_price='5.00') }}">Browse cards</a>
+                            {% else %}
+                                <a class="btn btn-outline-light btn-sm" href="{{ url_for('recommendations', category=item.category) }}">Find suggestions</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-success mb-0">Your deck meets the suggested minimums for the tracked categories. Review your strategy and legality before considering it finished.</p>
+            {% endif %}
+            <p class="muted-text small mt-3 mb-0">This is an automated, rule-based advisor, not a generative AI model. Categories are estimates and may overlap.</p>
+        </section>
+
         <!-- Deck Contents -->
         <section class="deck-panel">
 
