@@ -530,6 +530,49 @@
                 <p class="text-success mb-0">Your deck meets the suggested minimums for the tracked categories. Review your strategy and legality before considering it finished.</p>
             {% endif %}
             <p class="muted-text small mt-3 mb-0">This is an automated, rule-based advisor, not a generative AI model. Categories are estimates and may overlap.</p>
+            <!-- On-demand, read-only deck analysis -->
+            <div class="mt-4 pt-3 border-top border-secondary">
+                <form action="{{ url_for('deck') }}" method="GET" class="mb-3">
+                    <input type="hidden" name="analyze" value="1">
+                    <button type="submit" class="btn btn-purple">Analyze My Deck</button>
+                </form>
+                {% if analysis_report %}
+                    <div class="p-3 rounded" style="background-color:#172238;border:1px solid #475569;" aria-live="polite">
+                        <h3 class="h5 fw-bold">Your Deck Analysis</h3>
+                        <p>{{ analysis_report.summary }}</p>
+                        <h4 class="h6 fw-bold text-success">Strengths</h4>
+                        {% if analysis_report.strengths %}
+                            <ul>{% for strength in analysis_report.strengths %}<li>{{ strength }}</li>{% endfor %}</ul>
+                        {% else %}
+                            <p class="muted-text small">No tracked category has reached its finished-deck minimum yet.</p>
+                        {% endif %}
+                        <h4 class="h6 fw-bold text-warning">Areas to Improve</h4>
+                        {% if analysis_report.gaps %}
+                            <ul>{% for gap in analysis_report.gaps %}<li>{{ gap.label }}: {{ gap.actual }}/{{ gap.target }} — {{ gap.missing }} more to reach the suggested minimum.</li>{% endfor %}</ul>
+                        {% else %}
+                            <p class="muted-text small">All tracked categories meet the suggested minimums.</p>
+                        {% endif %}
+                        {% if analysis_report.priorities %}
+                            <h4 class="h6 fw-bold">Recommended Next Actions</h4>
+                            <ol>
+                                {% for priority in analysis_report.priorities %}
+                                <li class="mb-2">
+                                    <strong>{{ priority.label }}:</strong> {{ priority.reason }}
+                                    {% if priority.category in ('utility_lands', 'board_wipe', 'finishers') %}
+                                        <a class="composition-category-link" href="{{ url_for('category', category=priority.category, max_price='5.00') }}">Browse cards</a>
+                                    {% else %}
+                                        <a class="composition-category-link" href="{{ url_for('recommendations', category=priority.category) }}">Find suggestions</a>
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                            </ol>
+                        {% endif %}
+                        {% for note in analysis_report.notes %}<p class="muted-text small mb-2">{{ note }}</p>{% endfor %}
+                        <p class="muted-text small mb-0">Rule-based guidance using estimated Scryfall classifications. This is not a prediction of gameplay performance or a legality certification.</p>
+                    </div>
+                {% endif %}
+            </div>
+
         </section>
 
         <!-- Deck Contents -->

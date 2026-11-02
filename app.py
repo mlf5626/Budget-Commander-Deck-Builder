@@ -493,6 +493,48 @@ def analyze_deck_advisor(legality, deck_size, deck_cost, budget):
         "complete": deck_size == 100,
     }
 
+def build_deck_analysis(legality, advisor, deck_size, deck_cost, budget):
+    """Generate an on-demand, read-only report from existing validated counts."""
+    composition = legality.get("composition") or {}
+    roles = legality.get("role_counts") or {}
+    targets = [
+        ("Lands", 35), ("Ramp / Mana Acceleration", 10),
+        ("Card Draw / Advantage", 8), ("Targeted Removal", 8),
+        ("Board Wipes", 2), ("Protection", 2),
+        ("Win Conditions / Finishers", 2),
+    ]
+    strengths, gaps = [], []
+    for label, minimum in targets:
+        actual = composition.get("Lands", 0) if label == "Lands" else roles.get(label, 0)
+        actual = max(0, int(actual or 0))
+        if actual >= minimum:
+            strengths.append(f"{label}: {actual} cards meets the suggested minimum of {minimum}.")
+        else:
+            gaps.append({"label": label, "actual": actual, "target": minimum,
+                         "missing": minimum - actual})
+
+    remaining = budget - deck_cost
+    notes = []
+    if legality.get("status") == "Illegal":
+        notes.append("Resolve the legality issues shown above before considering this deck ready.")
+    elif legality.get("status") == "Needs review":
+        notes.append("Some card or Commander checks need review; analysis is provisional.")
+    if deck_size < 100:
+        notes.append(f"The deck is still being built ({deck_size}/100 cards). These targets describe a finished deck.")
+    if remaining < 0:
+        notes.append(f"The estimated deck cost is ${-remaining:.2f} over budget. Consider less expensive replacements.")
+    elif deck_size < 100:
+        notes.append(f"${remaining:.2f} remains for {100 - deck_size} open slots (about ${remaining / (100 - deck_size):.2f} per slot).")
+    if legality.get("unverified_role_cards", 0):
+        notes.append("Some cards could not be classified, so the role counts may be incomplete.")
+
+    return {"strengths": strengths, "gaps": gaps, "notes": notes,
+            "priorities": advisor.get("suggestions", []),
+            "summary": ("All tracked categories meet their suggested minimums."
+                        if not gaps else
+                        f"{len(gaps)} of {len(targets)} tracked categories are below their suggested minimums.")}
+
+
 @app.route("/deck")
 def deck():
     deck = session.get("deck", [])
@@ -545,6 +587,8 @@ def deck():
             deck_details[name] = lookup_card(name)
 
     advisor = analyze_deck_advisor(legality, deck_size, deck_cost, budget)
+    analysis_report = (build_deck_analysis(legality, advisor, deck_size, deck_cost, budget)
+                       if request.args.get("analyze") == "1" else None)
 
     return render_template(
         "deck.html",
@@ -562,7 +606,8 @@ def deck():
         legality=legality,
         commander_details=commander_details,
         deck_details=deck_details,
-        advisor=advisor
+        advisor=advisor,
+        analysis_report=analysis_report
     )
 
 @app.route("/continue-building")
