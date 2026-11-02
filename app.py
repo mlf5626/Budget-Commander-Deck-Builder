@@ -409,32 +409,84 @@ def remove_card():
 
 
 def analyze_deck_advisor(legality, deck_size, deck_cost, budget):
-    """Rule-based suggestions from existing deck checks; never changes the deck."""
+    """Prioritize deck-building gaps by progress and budget; never edit cards."""
     composition = legality.get("composition") or {}
     roles = legality.get("role_counts") or {}
+    remaining_budget = budget - deck_cost
+    slots_left = max(0, 100 - deck_size)
+
+    # These are planning guidelines, not Commander legality requirements.
     targets = [
-        ("Lands", 35, "utility_lands", "A reliable mana base helps you cast spells consistently."),
-        ("Ramp / Mana Acceleration", 10, "ramp", "More ramp can help you play your Commander and larger spells sooner."),
-        ("Card Draw / Advantage", 8, "draw", "Card draw helps keep options available later in the game."),
-        ("Targeted Removal", 8, "removal", "Removal helps answer opposing threats."),
-        ("Board Wipes", 2, "board_wipe", "Board wipes can help recover when opponents build stronger boards."),
-        ("Protection", 2, "protection", "Protection can help keep important cards on the battlefield."),
-        ("Win Conditions / Finishers", 2, "finishers", "Finishers give the deck ways to close out games."),
+        ("Lands", 35, "utility_lands", "A consistent mana base helps you cast spells on time."),
+        ("Ramp / Mana Acceleration", 10, "ramp", "Ramp helps cast your Commander and larger spells sooner."),
+        ("Card Draw / Advantage", 8, "draw", "Card draw keeps your hand stocked with options."),
+        ("Targeted Removal", 8, "removal", "Removal answers opposing threats."),
+        ("Board Wipes", 2, "board_wipe", "Board wipes can help you recover from a crowded battlefield."),
+        ("Protection", 2, "protection", "Protection helps your important cards survive."),
+        ("Win Conditions / Finishers", 2, "finishers", "Finishers provide ways to close out games."),
     ]
+
+    # Build phases affect priority, but every unmet target remains eligible.
+    if deck_size < 65:
+        phase = "foundation"
+        priorities = {"utility_lands": 5.0, "ramp": 4.5, "draw": 3.5,
+                      "removal": 2.5, "board_wipe": 1.5, "protection": 1.5,
+                      "finishers": 1.0}
+    elif deck_size < 90:
+        phase = "balance"
+        priorities = {"utility_lands": 4.5, "ramp": 4.0, "draw": 4.0,
+                      "removal": 3.5, "board_wipe": 2.5, "protection": 2.5,
+                      "finishers": 2.0}
+    else:
+        phase = "finishing"
+        priorities = {"utility_lands": 3.5, "ramp": 3.0, "draw": 3.5,
+                      "removal": 3.5, "board_wipe": 3.0, "protection": 3.0,
+                      "finishers": 3.5}
+
     suggestions = []
     for label, target, category, reason in targets:
-        actual = composition.get("Lands", 0) if label == "Lands" else roles.get(label, 0)
-        if actual < target:
-            suggestions.append({
-                "label": label, "actual": actual, "target": target,
-                "missing": target - actual, "category": category, "reason": reason
-            })
-    # Rank by share of recommended minimum missing, then absolute shortfall.
-    suggestions.sort(key=lambda item: (item["missing"] / item["target"], item["missing"]), reverse=True)
+        actual = composition.get("Lands", 0) if category == "utility_lands" else roles.get(label, 0)
+        try:
+            actual = max(0, int(actual))
+        except (TypeError, ValueError):
+            actual = 0
+        missing = max(0, target - actual)
+        if not missing:
+            continue
+
+        # Compare against both the final target and progress through the deck.
+        # A 50-card deck should not be treated like a nearly complete deck.
+        expected_now = target * min(1.0, deck_size / 100.0)
+        progress_gap = max(0.0, expected_now - actual) / target
+        score = priorities[category] + 3.0 * progress_gap + 0.5 * (missing / target)
+        explanation = reason
+        if progress_gap > 0.10:
+            explanation += " This category is behind the suggested pace for your current deck size."
+        if phase == "foundation" and category in ("utility_lands", "ramp"):
+            explanation += " Establishing your mana early is a priority."
+        if phase == "finishing":
+            explanation += " Review this gap before filling your final deck slots."
+        if remaining_budget <= 0:
+            explanation += " No budget remains; consider swapping cards rather than adding cost."
+        elif slots_left > 0:
+            average_available = remaining_budget / slots_left
+            if average_available < 1.0:
+                explanation += f" Your remaining budget averages ${average_available:.2f} per open slot."
+
+        suggestions.append({
+            "label": label, "actual": actual, "target": target,
+            "missing": missing, "category": category, "reason": explanation,
+            "_score": score,
+        })
+
+    suggestions.sort(key=lambda item: (item["_score"], item["missing"]), reverse=True)
+    for item in suggestions:
+        item.pop("_score", None)
+
     return {
         "suggestions": suggestions[:3],
-        "needs_more_cards": max(0, 100 - deck_size),
-        "remaining_budget": budget - deck_cost,
+        "needs_more_cards": slots_left,
+        "remaining_budget": remaining_budget,
         "over_budget": deck_cost > budget,
         "legality_status": legality.get("status", "Needs review"),
         "unverified": legality.get("unverified_role_cards", 0),
