@@ -77,10 +77,69 @@ def classify_card_roles(card):
         roles.add("Win Conditions / Finishers")
     return roles
 
+# Strategy tags are heuristic signals, not proof of a card combo or deck quality.
+STRATEGY_LABELS = {
+    "proliferate": "Proliferate",
+    "counters": "+1/+1 Counters",
+    "artifacts": "Artifacts",
+    "tokens": "Tokens",
+    "graveyard": "Graveyard",
+    "spellslinger": "Spellslinger",
+}
+
+
+def classify_card_strategies(card):
+    """Return strategy tags suggested by a card's type and Oracle text."""
+    if not card:
+        return set()
+    oracle = (card.get("oracle_text") or "").lower()
+    typ = (card.get("type_line") or "").lower()
+    keywords = {str(k).lower() for k in (card.get("keywords") or [])}
+    tags = set()
+
+    if "proliferate" in oracle or "proliferate" in keywords:
+        tags.add("proliferate")
+    if ("+1/+1 counter" in oracle or "put counters on" in oracle
+            or "move a counter" in oracle):
+        tags.add("counters")
+    if ("artifact" in typ or "artifact" in oracle or "affinity for artifacts" in oracle):
+        tags.add("artifacts")
+    if (re.search(r"create (?:one|two|three|four|[0-9]+|x|a|an|that many|a number of).*?tokens?", oracle, re.S)
+            or "populate" in oracle or "convoke" in oracle):
+        tags.add("tokens")
+    # Graveyard support means using or filling a graveyard, not merely exiling it.
+    graveyard_support = ("from your graveyard" in oracle or "from a graveyard" in oracle
+                         or "in your graveyard" in oracle or "mill " in oracle
+                         or bool({"flashback", "retrace", "escape", "dredge", "unearth"} & keywords))
+    if graveyard_support:
+        tags.add("graveyard")
+    # Generic 'whenever you cast a spell' triggers are not necessarily spellslinger support.
+    if (re.search(r"whenever you cast (?:an? |your |one or more )?(?:instant|sorcery)(?: or sorcery)?", oracle)
+            or "magecraft" in oracle or "storm" in keywords or "prowess" in keywords):
+        tags.add("spellslinger")
+    return tags
+
+
+def classify_card_interactions(card):
+    """Identify cards that interact with a theme without necessarily supporting it."""
+    if not card:
+        return set()
+    oracle = (card.get("oracle_text") or "").lower()
+    interactions = set()
+    if (re.search(r"exile (?:all |each |target |a |up to .*? )?.*?graveyards?", oracle)
+            or "exile all graveyards" in oracle):
+        interactions.add("graveyard")
+    return interactions - classify_card_strategies(card)
+
+
 def validate_deck(commander_name, deck, basic_lands):
     """Return a conservative legality assessment; never claim legal if verification fails."""
     count = 1 + len(deck) + sum(basic_lands.values())
     role_counts = {key: 0 for key in ROLE_KEYS}
+    strategy_counts = {key: 0 for key in STRATEGY_LABELS}
+    strategy_cards = {key: [] for key in STRATEGY_LABELS}
+    interaction_cards = {key: [] for key in STRATEGY_LABELS}
+    commander_strategies = []
     unverified_role_cards = 0
     issues = []
     warnings = []
@@ -109,6 +168,7 @@ def validate_deck(commander_name, deck, basic_lands):
     commander = lookup_card(commander_name) if commander_name else None
     count_card_type(commander)
     if commander:
+        commander_strategies = sorted(classify_card_strategies(commander))
         for role in classify_card_roles(commander):
             role_counts[role] += 1
     else:
@@ -146,6 +206,12 @@ def validate_deck(commander_name, deck, basic_lands):
             unverified_role_cards += frequencies[name.casefold()]
             warnings.append(f"Could not verify card: {name}.")
             continue
+        for tag in classify_card_strategies(card):
+            quantity = frequencies[name.casefold()]
+            strategy_counts[tag] += quantity
+            strategy_cards[tag].append({"name": name, "quantity": quantity})
+        for tag in classify_card_interactions(card):
+            interaction_cards[tag].append({"name": name, "quantity": frequencies[name.casefold()]})
         for role in classify_card_roles(card):
             role_counts[role] += frequencies[name.casefold()]
         if not card["legal"]:
@@ -174,4 +240,12 @@ def validate_deck(commander_name, deck, basic_lands):
     return {"status": status, "issues": list(dict.fromkeys(issues)),
             "warnings": list(dict.fromkeys(warnings)), "remaining": max(0, 100 - count),
             "count": count, "composition": composition,
-            "role_counts": role_counts, "unverified_role_cards": unverified_role_cards}
+            "role_counts": role_counts, "unverified_role_cards": unverified_role_cards,
+            "strategy_analysis": {
+                "commander_themes": commander_strategies,
+                "support_counts": strategy_counts,
+                "support_cards": strategy_cards,
+                "interaction_cards": interaction_cards,
+                "labels": STRATEGY_LABELS.copy(),
+                "unverified_cards": unverified_role_cards,
+            }}

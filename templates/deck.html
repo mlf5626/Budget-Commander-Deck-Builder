@@ -540,6 +540,52 @@
                     <div class="p-3 rounded" style="background-color:#172238;border:1px solid #475569;" aria-live="polite">
                         <h3 class="h5 fw-bold">Your Deck Analysis</h3>
                         <p>{{ analysis_report.summary }}</p>
+                        <h4 class="h6 fw-bold">Commander Strategy Analysis</h4>
+                        {% if analysis_report.commander_themes %}
+                            <p class="muted-text small mb-2">Themes detected from your Commander's card text and matching signals in the other cards in your deck:</p>
+                            <ul>
+                                {% for theme in analysis_report.commander_themes %}
+                                    <li><strong>{{ theme.label }}</strong> — {{ theme.count }} potentially supporting deck card(s).
+                                        {% if theme.cards %}
+                                            <ul class="mt-1 mb-2">
+                                                {% for card in theme.cards %}
+                                                    <li>{{ card.name }}{% if card.quantity > 1 %} (×{{ card.quantity }}){% endif %}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="muted-text small">No supported strategy theme was confidently identified from the Commander's card text. This does not mean the Commander lacks a strategy.</p>
+                        {% endif %}
+                        {% if analysis_report.other_themes %}
+                            <p class="muted-text small mb-1">Other detected deck themes (not necessarily Commander synergies):</p>
+                            <ul>
+                                {% for theme in analysis_report.other_themes %}
+                                    <li>{{ theme.label }} — {{ theme.count }} matching deck card(s).
+                                        {% if theme.cards %}
+                                            <ul class="mt-1 mb-2">
+                                                {% for card in theme.cards %}
+                                                    <li>{{ card.name }}{% if card.quantity > 1 %} (×{{ card.quantity }}){% endif %}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                        {% if analysis_report.theme_interactions %}
+                            <p class="muted-text small mb-1"><strong>Strategy interaction (not counted as support):</strong></p>
+                            <ul>
+                                {% for theme in analysis_report.theme_interactions %}
+                                    <li>{{ theme.label }}:
+                                        {% for card in theme.cards %}{{ card.name }}{% if card.quantity > 1 %} (×{{ card.quantity }}){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                        <p class="muted-text small">Theme matches are keyword and rules-text estimates. They do not prove a card works well with your Commander, and one card can match multiple themes.</p>
                         <h4 class="h6 fw-bold text-success">Strengths</h4>
                         {% if analysis_report.strengths %}
                             <ul>{% for strength in analysis_report.strengths %}<li>{{ strength }}</li>{% endfor %}</ul>
@@ -561,7 +607,9 @@
                                     {% if priority.category in ('utility_lands', 'board_wipe', 'finishers') %}
                                         <a class="composition-category-link" href="{{ url_for('category', category=priority.category, max_price='5.00') }}">Browse cards</a>
                                     {% else %}
-                                        <a class="composition-category-link" href="{{ url_for('recommendations', category=priority.category) }}">Find suggestions</a>
+                                        <a class="composition-category-link" href="{{ url_for('recommendations', category=priority.category, strategy=1) }}">Find strategy matches</a>
+                                        <span class="muted-text small"> · </span>
+                                        <a class="composition-category-link" href="{{ url_for('recommendations', category=priority.category) }}">Standard suggestions</a>
                                     {% endif %}
                                 </li>
                                 {% endfor %}

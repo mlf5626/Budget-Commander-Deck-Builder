@@ -513,6 +513,31 @@ def build_deck_analysis(legality, advisor, deck_size, deck_cost, budget):
             gaps.append({"label": label, "actual": actual, "target": minimum,
                          "missing": minimum - actual})
 
+    # Strategy tags come from legality.py and exclude the commander from support counts.
+    strategy_data = legality.get("strategy_analysis") or {}
+    theme_keys = strategy_data.get("commander_themes") or []
+    support_counts = strategy_data.get("support_counts") or {}
+    support_cards = strategy_data.get("support_cards") or {}
+    labels = strategy_data.get("labels") or {}
+    interaction_cards = strategy_data.get("interaction_cards") or {}
+    commander_themes = [
+        {"label": labels.get(key, key.replace("_", " ").title()),
+         "count": max(0, int(support_counts.get(key, 0) or 0)),
+         "cards": support_cards.get(key, [])}
+        for key in theme_keys
+    ]
+    other_themes = [
+        {"label": labels.get(key, key.replace("_", " ").title()),
+         "count": int(count), "cards": support_cards.get(key, [])}
+        for key, count in support_counts.items()
+        if key not in theme_keys and count > 0
+    ]
+    other_themes.sort(key=lambda item: (-item["count"], item["label"]))
+    theme_interactions = [
+        {"label": labels.get(key, key.title()), "cards": cards}
+        for key, cards in interaction_cards.items() if cards
+    ]
+
     remaining = budget - deck_cost
     notes = []
     if legality.get("status") == "Illegal":
@@ -529,6 +554,9 @@ def build_deck_analysis(legality, advisor, deck_size, deck_cost, budget):
         notes.append("Some cards could not be classified, so the role counts may be incomplete.")
 
     return {"strengths": strengths, "gaps": gaps, "notes": notes,
+            "commander_themes": commander_themes,
+            "other_themes": other_themes,
+            "theme_interactions": theme_interactions,
             "priorities": advisor.get("suggestions", []),
             "summary": ("All tracked categories meet their suggested minimums."
                         if not gaps else
@@ -982,6 +1010,7 @@ def recommendations():
         return redirect(url_for("home"))
     category = request.args.get("category", "synergy")
     sort = request.args.get("sort", "popular")
+    strategy_focus = request.args.get("strategy") == "1"
 
     session["builder_view"] = "recommendations"
     session["builder_recommendation_category"] = category
@@ -1016,7 +1045,8 @@ def recommendations():
         cards, description, error = [], "Your deck is full. Remove a card to see addable recommendations.", None
     else:
         cards, description, error = fetch_recommendations(
-            commander, deck_cards, budget - deck_cost, category, sort
+            commander, deck_cards, budget - deck_cost, category, sort,
+            strategy_focus=strategy_focus
         )
     return render_template(
         "builder.html", commander=commander, budget=budget,
