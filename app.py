@@ -166,6 +166,7 @@ def build():
     session.pop("builder_max_price", None)
     session.pop("builder_recommendation_category", None)
     session.pop("builder_recommendation_sort", None)
+    session.pop("builder_recommendation_strategy", None)
 
     # Look up the selected Commander again
     commander_url = "https://api.scryfall.com/cards/named"
@@ -385,7 +386,8 @@ def add_card():
             url_for(
                 "recommendations",
                 category=session.get("builder_recommendation_category", "synergy"),
-                sort=session.get("builder_recommendation_sort", "popular")
+                sort=session.get("builder_recommendation_sort", "popular"),
+                strategy="1" if session.get("builder_recommendation_strategy") else "0"
             )
         )
     
@@ -1015,6 +1017,7 @@ def recommendations():
     session["builder_view"] = "recommendations"
     session["builder_recommendation_category"] = category
     session["builder_recommendation_sort"] = sort
+    session["builder_recommendation_strategy"] = strategy_focus
 
     deck_cards = session.get("deck", [])
     basic_lands = session.get("basic_lands", {})

@@ -9,12 +9,14 @@ CATEGORIES = {
     "draw": "Card Draw",
     "removal": "Removal",
     "protection": "Protection",
+    "creatures": "Creatures",
 }
 CATEGORY_QUERIES = {
     "ramp": '(o:"add {" OR o:"onto the battlefield" OR o:"additional land")',
     "draw": '(o:"draw a card" OR o:"draw two cards" OR o:"draw three cards")',
     "removal": '(o:"destroy target" OR o:"exile target")',
     "protection": '(o:"hexproof" OR o:"indestructible" OR o:"protection from")',
+    "creatures": "t:creature",
 }
 THEMES = [
     ("proliferate", "Proliferate", 'o:proliferate'),
@@ -89,7 +91,7 @@ def explain_recommendation(card, category="synergy"):
     if category == "ramp":
         return ramp_evidence(card) or "Matches the ramp search; mana acceleration is not verified."
 
-    if category == "synergy":
+    if category in ("synergy", "creatures"):
         matches = [
             label
             for term, label, query in THEMES
@@ -103,7 +105,8 @@ def explain_recommendation(card, category="synergy"):
                 + "."
             )
 
-        return "Matches the selected Commander strategy search."
+        return ("Creature option that fits your Commander color identity and budget."
+                if category == "creatures" else "Matches the selected Commander strategy search.")
 
     explanations = {
         "ramp": "Helps generate mana or develop your mana resources.",
@@ -129,6 +132,11 @@ def fetch_recommendations(commander, deck, remaining_budget, category="synergy",
     else:
         filter_query = CATEGORY_QUERIES[category]
         description = f"Budget-aware {CATEGORIES[category].lower()} suggestions."
+    # Creatures should prioritize detected Commander themes by default.
+    if category == "creatures" and theme_query:
+        filter_query = f"t:creature {theme_query}"
+        description = (f"Creatures matching detected Commander themes: {theme_label}. "
+                       "Use standard suggestions if no suitable creatures appear.")
     # Optional focused search: the card must match BOTH the selected role and
     # the commander's detected theme. Keep the original searches as defaults.
     focused = bool(strategy_focus and category != "synergy" and theme_query)
@@ -171,7 +179,7 @@ def fetch_recommendations(commander, deck, remaining_budget, category="synergy",
             if len(cards) >= 18:
                 break
         if focused and not cards:
-            description += " No verified mana-acceleration matches were found. Try standard suggestions."
+            description += " No matching recommendations were found. Try standard suggestions."
         elif focused:
             for card in cards:
                 card["recommendation_reason"] = (
