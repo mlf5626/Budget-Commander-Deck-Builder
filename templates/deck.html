@@ -484,6 +484,30 @@
             {% if advisor.unverified %}
                 <p class="text-warning small">{{ advisor.unverified }} card(s) could not be classified, so these suggestions may be incomplete.</p>
             {% endif %}
+            <!-- Four always-visible deck-building benchmarks; counts come from legality.py. -->
+            {% set advisor_benchmarks = [
+                ('Lands', legality.composition.get('Lands', 0), 35),
+                ('Ramp', legality.role_counts.get('Ramp / Mana Acceleration', 0), 10),
+                ('Card Draw', legality.role_counts.get('Card Draw / Advantage', 0), 8),
+                ('Removal', legality.role_counts.get('Targeted Removal', 0), 8)
+            ] %}
+            <h3 class="h6 fw-bold mb-3">Deck Building Progress</h3>
+            <div class="row g-3 mb-4">
+                {% for label, actual, target in advisor_benchmarks %}
+                {% set percentage = [((actual / target) * 100), 100] | min %}
+                <div class="col-sm-6">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-semibold">{{ label }}</span>
+                        <span class="muted-text">{{ actual }} / {{ target }}</span>
+                    </div>
+                    <div class="progress" role="progressbar" aria-label="{{ label }} progress toward suggested minimum"
+                         aria-valuenow="{{ [actual, target] | min }}" aria-valuemin="0" aria-valuemax="{{ target }}">
+                        <div class="progress-bar" style="width: {{ percentage }}%;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="muted-text small mb-3">Progress bars show suggested minimums for a completed 100-card deck, not Commander legality requirements. Card roles are estimates and can overlap.</p>
             {% if advisor.suggestions %}
                 <h3 class="h6 fw-bold">Top areas to improve</h3>
                 <div class="row g-3">
