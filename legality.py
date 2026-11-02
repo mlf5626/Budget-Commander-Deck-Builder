@@ -96,7 +96,7 @@ def validate_deck(commander_name, deck, basic_lands):
             return
         type_line = card_data.get("type_line", "").split(" // ")[0]
         for word, category in (
-            ("Creature", "Creatures"), ("Land", "Lands"),
+            ("Land", "Lands"), ("Creature", "Creatures"),
             ("Planeswalker", "Planeswalkers"), ("Instant", "Instants"),
             ("Sorcery", "Sorceries"), ("Artifact", "Artifacts"),
             ("Enchantment", "Enchantments"),
