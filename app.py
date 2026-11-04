@@ -53,6 +53,19 @@ def get_basic_land_price(land_name):
     return None
 
 
+def is_eligible_commander(card):
+    """Check Commander-format legality and eligibility to lead a deck."""
+    if card.get("legalities", {}).get("commander") != "legal":
+        return False
+    type_line = card.get("type_line", "")
+    if "Legendary" in type_line and "Creature" in type_line:
+        return True
+    oracle_parts = [card.get("oracle_text", "")]
+    oracle_parts.extend(face.get("oracle_text", "") for face in card.get("card_faces", []))
+    oracle = " ".join(oracle_parts).lower()
+    return "can be your commander" in oracle
+
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -81,6 +94,11 @@ def search():
                                    message="Commander not found. Check the spelling and try again."), 404
         response.raise_for_status()
         commander = response.json()
+        if not is_eligible_commander(commander):
+            return render_template(
+                "commander_error.html",
+                message="That card cannot be selected as a Commander. Choose an eligible legendary creature or a card with special Commander permission."
+            ), 400
         commander_price = commander.get("prices", {}).get("usd")
         session["commander_price"] = float(commander_price) if commander_price else 0.0
         session["selected_commander_name"] = commander.get("name", commander_name)
@@ -107,6 +125,9 @@ def commander_selection():
         )
         response.raise_for_status()
         commander = response.json()
+        if not is_eligible_commander(commander):
+            session.pop("selected_commander_name", None)
+            return render_template("commander_error.html", message="That card cannot be selected as a Commander."), 400
         price = commander.get("prices", {}).get("usd")
         session["commander_price"] = float(price) if price else 0.0
         return render_template("commander.html", commander=commander)
@@ -188,6 +209,8 @@ def build():
         return "Unable to retrieve Commander."
 
     commander = commander_response.json()
+    if not is_eligible_commander(commander):
+        return render_template("commander_error.html", message="That card cannot be selected as a Commander."), 400
     session["commander_cache"] = {"name": commander.get("name", commander_name), "color_identity": commander.get("color_identity", [])}
 
     # Convert color identity into a Scryfall search value
@@ -226,6 +249,45 @@ def build():
     deck_size=1,
     deck_cost=commander_price
     )
+
+def find_alternate_printing_price(card_name, allowed_colors, headers):
+    """Find a verified USD price for another paper printing of the same card."""
+    # Exact card-name search, not a similarly named card or a different face.
+    escaped_name = card_name.replace('\\', '\\\\').replace('"', '\\"')
+    try:
+        response = requests.get(
+            "https://api.scryfall.com/cards/search",
+            params={
+                "q": f'!"{escaped_name}" game:paper legal:commander usd>0',
+                "unique": "prints",
+                "order": "usd",
+                "dir": "asc",
+            },
+            headers=headers,
+            timeout=10,
+        )
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        printings = response.json().get("data", [])
+    except (requests.RequestException, ValueError, TypeError, AttributeError):
+        return None
+
+    for printing in printings:
+        if printing.get("name", "").casefold() != card_name.casefold():
+            continue
+        if printing.get("legalities", {}).get("commander") != "legal":
+            continue
+        if not set(printing.get("color_identity", [])).issubset(allowed_colors):
+            continue
+        try:
+            candidate = float(printing.get("prices", {}).get("usd"))
+            if math.isfinite(candidate) and candidate > 0:
+                return candidate
+        except (ValueError, TypeError, AttributeError):
+            continue
+    return None
+
 
 @app.route("/add-card", methods=["POST"])
 def add_card():
@@ -297,16 +359,25 @@ def add_card():
         session["message"] = "Your Commander is already included in the deck."
         return redirect(url_for("deck"))
 
-    # The Scryfall USD price is the authoritative estimate for this action.
-    # If no price is available, fail closed instead of trusting a form value.
-    from math import isfinite
+    # Use the selected printing's verified USD price when available.
+    # Otherwise try another exact-name paper printing with a verified price.
+    price = None
+    used_alternate_price = False
     try:
-        price = float(card_data.get("prices", {}).get("usd"))
-        if not isfinite(price) or price < 0:
-            raise ValueError("Invalid price")
+        candidate = float(card_data.get("prices", {}).get("usd"))
+        if math.isfinite(candidate) and candidate >= 0:
+            price = candidate
     except (ValueError, TypeError, AttributeError):
+        pass
+
+    if price is None:
+        price = find_alternate_printing_price(verified_name, allowed_colors, headers)
+        used_alternate_price = price is not None
+
+    if price is None:
         session["message"] = (
-            f"A verified USD price is unavailable for {verified_name}. No card was added."
+            f"A verified USD price is unavailable for {verified_name}, "
+            "including alternate printings. No card was added."
         )
         return redirect(url_for("deck"))
 
@@ -366,6 +437,11 @@ def add_card():
 
     deck.append(card)
     session["deck"] = deck
+    if used_alternate_price:
+        session["message"] = (
+            f"Added {card_name} using an alternate printing's verified "
+            f"USD price (${price:.2f})."
+        )
    
 
 
@@ -794,6 +870,7 @@ def search_cards():
         f"id<={color_identity} "
         f"-t:land "
         f"game:paper "
+        f"usd>0 "  # Only show printings with a verified USD price and an enabled Add button.
         f"{card_search}"
     )
 
